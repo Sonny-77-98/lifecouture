@@ -8,16 +8,14 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Additional debugging
-console.log('Attempting to connect to database at cpanel.cikeys.com:3306');
 const pool = mysql.createPool({
-  host: 'cpanel.cikeys.com',  // Use the exact hostname from Workbench
-  user: 'duclecik_testuser',
-  password: 'duchongle@98',
-  database: 'duclecik_LifeCouture',
-  port: 3306,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: process.env.DB_CONNECTION_LIMIT || 10
 });
 
 // Simple API endpoint to get products

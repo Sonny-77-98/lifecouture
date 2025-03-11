@@ -1,4 +1,3 @@
-// Example 1: Basic data retrieval in an Express.js application
 const express = require('express');
 const { query } = require('./db');
 const app = express();
