@@ -1,3 +1,6 @@
+// Load environment variables at the beginning
+require('dotenv').config();
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 const path = require('path');
@@ -8,12 +11,13 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
+  port: process.env.DB_PORT,
   waitForConnections: true,
   connectionLimit: process.env.DB_CONNECTION_LIMIT || 10
 });
@@ -21,8 +25,13 @@ const pool = mysql.createPool({
 // Simple API endpoint to get products
 app.get('/api/products', async (req, res) => {
   try {
+    const dbName = process.env.DB_NAME || 'duclecik_LifeCouture';
     console.log('Executing database query...');
-    const [products] = await pool.query('SELECT * FROM Product');
+    console.log(`Using database: ${dbName}`);
+    
+    // Use fully qualified table name
+    const [products] = await pool.query(`SELECT * FROM \`${dbName}\`.\`Product\``);
+    
     console.log(`Retrieved ${products.length} products from database`);
     res.json(products);
   } catch (error) {
@@ -33,7 +42,10 @@ app.get('/api/products', async (req, res) => {
       sqlState: error.sqlState,
       sqlMessage: error.sqlMessage
     });
-    res.status(500).json({ error: 'Failed to fetch products' });
+    res.status(500).json({ 
+      error: 'Failed to fetch products',
+      details: error.message 
+    });
   }
 });
 
@@ -45,7 +57,23 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// Test database connection on startup
+async function testConnection() {
+  try {
+    const connection = await pool.getConnection();
+    console.log(`Database connection successful to ${process.env.DB_NAME || 'duclecik_LifeCouture'} at ${process.env.DB_HOST || 'cpanel.cikeys.com'}`);
+    connection.release();
+    return true;
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    return false;
+  }
+}
+
+// Run connection test before starting server
+testConnection().then(() => {
+  // Start the server
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 });
