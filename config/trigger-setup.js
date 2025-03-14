@@ -29,20 +29,20 @@ const userService = {
         ]
       );
 
-      const userId = result.insertId;
+      const usID = result.insertId;
 
       // Get the reference number from UserReference (created by trigger)
       const referenceData = await query(
         'SELECT referenceNumber FROM UserReference WHERE userID = ?',
-        [userId]
+        [usID]
       );
 
       // Return the created user with reference number
       return {
-        userId,
+        usID,
         referenceNumber: referenceData[0]?.referenceNumber,
         ...userData,
-        password: undefined // Don't return the password
+        password: undefined
       };
     } catch (error) {
       console.error('Error adding user:', error);
@@ -52,17 +52,17 @@ const userService = {
 
   /**
    * Get user by ID with reference number
-   * @param {number} userId - User ID
+   * @param {number} usID - User ID
    * @returns {Object} - User data with reference number
    */
-  async getUserById(userId) {
+  async getUserById(usID) {
     try {
       const [user] = await query(
         `SELECT u.*, ur.referenceNumber 
          FROM User u
          JOIN UserReference ur ON u.usID = ur.userID
          WHERE u.usID = ?`,
-        [userId]
+        [usID]
       );
       return user;
     } catch (error) {
@@ -95,27 +95,27 @@ const productService = {
         ]
       );
 
-      const productId = result.insertId;
+      const prodID = result.insertId;
 
       // Get the reference number from ProductReference (created by trigger)
       const referenceData = await query(
         'SELECT referenceNumber FROM ProductReference WHERE productID = ?',
-        [productId]
+        [prodID]
       );
 
       // If there are categories, associate them with the product
       if (productData.categories && productData.categories.length > 0) {
-        for (const categoryId of productData.categories) {
+        for (const catID of productData.categories) {
           await query(
             'INSERT INTO ProductCategories (prodID, catID) VALUES (?, ?)',
-            [productId, categoryId]
+            [prodID, catID]
           );
         }
       }
 
       // Return the created product with reference number
       return {
-        productId,
+        prodID,
         referenceNumber: referenceData[0]?.referenceNumber,
         ...productData
       };
@@ -139,24 +139,24 @@ const productService = {
         [
           variantData.sku,
           variantData.barcode || null,
-          variantData.productId
+          variantData.prodID
         ]
       );
 
-      const variantId = result.insertId;
+      const varID = result.insertId;
 
       // Get the reference number from VariantReference (created by trigger)
       const referenceData = await query(
         'SELECT referenceNumber FROM VariantReference WHERE variantID = ?',
-        [variantId]
+        [varID]
       );
 
       // Add attribute values if provided
       if (variantData.attributes && Object.keys(variantData.attributes).length > 0) {
-        for (const [attributeId, value] of Object.entries(variantData.attributes)) {
+        for (const [attID, value] of Object.entries(variantData.attributes)) {
           await query(
             'INSERT INTO VariantAttributesValues (varID, attID, attValue) VALUES (?, ?, ?)',
-            [variantId, attributeId, value]
+            [varID, attID, value]
           );
         }
       }
@@ -168,14 +168,14 @@ const productService = {
           [
             variantData.quantity,
             variantData.lowStockThreshold || 5,
-            variantId
+            varID
           ]
         );
       }
 
       // Return the created variant with reference number
       return {
-        variantId,
+        varID,
         referenceNumber: referenceData[0]?.referenceNumber,
         ...variantData
       };
@@ -187,10 +187,10 @@ const productService = {
 
   /**
    * Get product by ID with reference number
-   * @param {number} productId - Product ID
+   * @param {number} prodID - Product ID
    * @returns {Object} - Product data with reference number and variants
    */
-  async getProductById(productId) {
+  async getProductById(prodID) {
     try {
       // Get product details
       const [product] = await query(
@@ -198,7 +198,7 @@ const productService = {
          FROM Product p
          JOIN ProductReference pr ON p.prodID = pr.productID
          WHERE p.prodID = ?`,
-        [productId]
+        [prodID]
       );
 
       if (!product) return null;
@@ -209,7 +209,7 @@ const productService = {
          FROM ProductVariants pv
          JOIN VariantReference vr ON pv.varID = vr.variantID
          WHERE pv.prodID = ?`,
-        [productId]
+        [prodID]
       );
 
       // Get product categories
@@ -218,7 +218,7 @@ const productService = {
          FROM Categories c
          JOIN ProductCategories pc ON c.catID = pc.catID
          WHERE pc.prodID = ?`,
-        [productId]
+        [prodID]
       );
 
       return {
@@ -251,16 +251,16 @@ const orderService = {
         [
           'pending',
           orderData.totalAmount,
-          orderData.userId
+          orderData.usID
         ]
       );
 
-      const orderId = result.insertId;
+      const orderID = result.insertId;
 
       // Get the reference number from OrderReference (created by trigger)
       const referenceData = await query(
         'SELECT referenceNumber FROM OrderReference WHERE orderID = ?',
-        [orderId]
+        [orderID]
       );
 
       // Add order items
@@ -271,15 +271,15 @@ const orderService = {
           [
             item.quantity,
             item.unitPrice,
-            orderId,
-            item.variantId
+            orderID,
+            item.varID
           ]
         );
       }
 
       // Return the created order with reference number
       return {
-        orderId,
+        orderID,
         referenceNumber: referenceData[0]?.referenceNumber,
         status: 'pending',
         createdAt: new Date(),
@@ -293,10 +293,10 @@ const orderService = {
 
   /**
    * Get order by ID with reference number
-   * @param {number} orderId - Order ID
+   * @param {number} orderID - Order ID
    * @returns {Object} - Order data with reference number and items
    */
-  async getOrderById(orderId) {
+  async getOrderById(orderID) {
     try {
       // Get order details
       const [order] = await query(
@@ -304,7 +304,7 @@ const orderService = {
          FROM Orders o
          JOIN OrderReference orr ON o.orderID = orr.orderID
          WHERE o.orderID = ?`,
-        [orderId]
+        [orderID]
       );
 
       if (!order) return null;
@@ -317,7 +317,7 @@ const orderService = {
          JOIN Product p ON pv.prodID = p.prodID
          JOIN VariantReference vr ON pv.varID = vr.variantID
          WHERE oi.orderID = ?`,
-        [orderId]
+        [orderID]
       );
 
       return {
@@ -332,18 +332,18 @@ const orderService = {
 
   /**
    * Update order status
-   * @param {number} orderId - Order ID
+   * @param {number} orderID - Order ID
    * @param {string} status - New status
    * @returns {Object} - Updated order
    */
-  async updateOrderStatus(orderId, status) {
+  async updateOrderStatus(orderID, status) {
     try {
       await query(
         'UPDATE Orders SET orderStat = ? WHERE orderID = ?',
-        [status, orderId]
+        [status, orderID]
       );
 
-      return await this.getOrderById(orderId);
+      return await this.getOrderById(orderID);
     } catch (error) {
       console.error('Error updating order status:', error);
       throw error;
@@ -357,20 +357,20 @@ const orderService = {
 const cartService = {
   /**
    * Add item to user's cart
-   * @param {number} userId - User ID
-   * @param {number} variantId - Variant ID
+   * @param {number} usID - User ID
+   * @param {number} varID - Variant ID
    * @param {number} quantity - Quantity
    * @returns {Object} - Updated cart
    */
-  async addToCart(userId, variantId, quantity) {
+  async addToCart(usID, varID, quantity) {
     try {
       // Using the stored procedure from your SQL
       await query(
         'CALL AddItemToCart(?, ?, ?)',
-        [userId, variantId, quantity]
+        [usID, varID, quantity]
       );
 
-      return await this.getCart(userId);
+      return await this.getCart(usID);
     } catch (error) {
       console.error('Error adding to cart:', error);
       throw error;
@@ -379,15 +379,15 @@ const cartService = {
 
   /**
    * Get user's cart
-   * @param {number} userId - User ID
+   * @param {number} usID - User ID
    * @returns {Object} - Cart with items
    */
-  async getCart(userId) {
+  async getCart(usID) {
     try {
       // Using the stored procedure from your SQL
       const cartData = await query(
         'CALL RetrieveUserCartWithItems(?)',
-        [userId]
+        [usID]
       );
 
       return cartData[0]; // First result set contains the cart items
@@ -399,14 +399,14 @@ const cartService = {
 
   /**
    * Remove item from cart
-   * @param {number} cartItemId - Cart item ID
+   * @param {number} cartItemID - Cart item ID
    * @returns {boolean} - Success status
    */
-  async removeCartItem(cartItemId) {
+  async removeCartItem(cartItemID) {
     try {
       await query(
         'DELETE FROM CartItems WHERE cartItemID = ?',
-        [cartItemId]
+        [cartItemID]
       );
       return true;
     } catch (error) {
@@ -417,20 +417,20 @@ const cartService = {
 
   /**
    * Update cart item quantity
-   * @param {number} cartItemId - Cart item ID
+   * @param {number} cartItemID - Cart item ID
    * @param {number} quantity - New quantity
    * @returns {Object} - Updated cart item
    */
-  async updateCartItemQuantity(cartItemId, quantity) {
+  async updateCartItemQuantity(cartItemID, quantity) {
     try {
       await query(
         'UPDATE CartItems SET cartQty = ? WHERE cartItemID = ?',
-        [quantity, cartItemId]
+        [quantity, cartItemID]
       );
 
       const [updatedItem] = await query(
         'SELECT * FROM CartItems WHERE cartItemID = ?',
-        [cartItemId]
+        [cartItemID]
       );
 
       return updatedItem;

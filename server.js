@@ -57,7 +57,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Test database connection on startup
+// Backend database connection update
 async function testConnection() {
   try {
     const connection = await pool.getConnection();

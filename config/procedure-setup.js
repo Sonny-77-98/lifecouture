@@ -8,13 +8,13 @@ const { query } = require('./db');
 const productProcedureService = {
   /**
    * Retrieve product with all its variants
-   * @param {number} productId - Product ID
-   * @returns {Object} - Product with variants
+   * @param {number} productId 
+   * @returns {Object}
    */
   async getProductWithVariants(productId) {
     try {
       const results = await query('CALL RetrieveProductWithVariants(?)', [productId]);
-      return results[0]; // First result set contains product with variants
+      return results[0];
     } catch (error) {
       console.error('Error retrieving product with variants:', error);
       throw error;
@@ -23,13 +23,13 @@ const productProcedureService = {
 
   /**
    * Retrieve product with all its categories
-   * @param {number} productId - Product ID
-   * @returns {Object} - Product with categories
+   * @param {number} productId 
+   * @returns {Object}
    */
   async getProductWithCategories(productId) {
     try {
       const results = await query('CALL RetrieveProductWithCategories(?)', [productId]);
-      return results[0]; // First result set contains product with categories
+      return results[0];
     } catch (error) {
       console.error('Error retrieving product with categories:', error);
       throw error;
@@ -79,7 +79,7 @@ const orderProcedureService = {
   async getUserOrdersWithDetails(userId) {
     try {
       const results = await query('CALL RetrieveUserOrdersWithDetails(?)', [userId]);
-      return results[0]; // First result set contains orders with details
+      return results[0];
     } catch (error) {
       console.error('Error retrieving user orders:', error);
       throw error;
@@ -99,7 +99,7 @@ const orderProcedureService = {
         [userId, shippingAddressId]
       );
       
-      return results[0]; // First result set contains the new order details
+      return results[0];
     } catch (error) {
       console.error('Error processing order from cart:', error);
       throw error;
@@ -119,7 +119,7 @@ const cartProcedureService = {
   async getUserCartWithItems(userId) {
     try {
       const results = await query('CALL RetrieveUserCartWithItems(?)', [userId]);
-      return results[0]; // First result set contains cart with items
+      return results[0]; 
     } catch (error) {
       console.error('Error retrieving user cart:', error);
       throw error;
@@ -128,16 +128,16 @@ const cartProcedureService = {
 
   /**
    * Add item to user's cart
-   * @param {number} userId - User ID
-   * @param {number} variantId - Variant ID
-   * @param {number} quantity - Quantity to add
-   * @returns {Object} - Updated cart
+   * @param {number} userId - 
+   * @param {number} varID
+   * @param {number} quantity 
+   * @returns {Object} 
    */
-  async addItemToCart(userId, variantId, quantity) {
+  async addItemToCart(userId, varID, quantity) {
     try {
       const results = await query(
         'CALL AddItemToCart(?, ?, ?)',
-        [userId, variantId, quantity]
+        [userId, varID, quantity]
       );
       
       return results[0]; // First result set contains updated cart
