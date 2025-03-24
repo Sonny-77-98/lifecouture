@@ -1,4 +1,3 @@
-// procedureService.js - Service layer utilizing stored procedures for Life Couture
 require('dotenv').config();
 const { query } = require('./db');
 

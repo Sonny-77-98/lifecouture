@@ -1,4 +1,3 @@
-// dataService.js - Data access layer for Life Couture database
 require('dotenv').config();
 const { query } = require('./db');
 

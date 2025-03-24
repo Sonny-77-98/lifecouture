@@ -1,11 +1,11 @@
-require('dotenv').config(); // Load environment variables from .env file
+require('dotenv').config(); 
 
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 
-// Get environment variables from the .env file
 const PORT = process.env.PORT || 3000;
 const DB_HOST = process.env.DB_HOST;
 const DB_USER = process.env.DB_USER;
@@ -18,6 +18,9 @@ const DB_CONNECTION_LIMIT = process.env.DB_CONNECTION_LIMIT || 10;
 app.use(express.json());
 app.use(cors());
 
+// Serve static files from the build directory
+app.use(express.static(path.join(__dirname, 'build')));
+
 // MySQL connection pool setup
 const pool = mysql.createPool({
   host: DB_HOST,
@@ -29,7 +32,11 @@ const pool = mysql.createPool({
   connectionLimit: DB_CONNECTION_LIMIT,
 });
 
-// Routes
+// API Routes
+const inventoryRoutes = require('./backend/routes/inventory');
+app.use('/api/inventory', inventoryRoutes);
+const { router: authRouter } = require('./backend/routes/authentication');
+app.use('/api/auth', authRouter);
 
 // Fetch products from the database
 app.get('/api/products', async (req, res) => {
@@ -95,6 +102,20 @@ app.post('/api/checkout', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to place order', details: error.message });
   }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  if (err instanceof URIError) {
+    console.error('URI Error:', err.message);
+    return res.status(400).send('Bad Request - Invalid URI');
+  }
+  next(err);
+});
+
+// Catchall handler to serve React app for any non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 // Start the server

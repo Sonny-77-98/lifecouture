@@ -5,11 +5,12 @@ import PrivateRoute from './components/PrivateRoute';
 
 // Admin components
 import Login from './components/Login';
-import Dashboard from './components/admin/Dashboard';
+import Dashboard from './components/admin/DashBoard';
 import ProductList from './components/admin/ProductList';
 import ProductForm from './components/admin/ProductForm';
 import CategoryList from './components/admin/CategoryList';
 import CategoryForm from './components/admin/CategoryForm';
+import InventoryList from './components/admin/InventoryList';
 
 // Storefront components
 import Cart from "./Cart";
@@ -19,11 +20,12 @@ import Contact from "./Contact";
 
 // Styles
 import './style/App.css';
-import './style/Dashboard.css';
+import './style/DashBoard.css';
 import './style/ProductList.css';
 import './style/ProductForm.css';
 import './style/CategoryList.css';
 import './style/CategoryForm.css';
+import './style/InventoryList.css';
 
 function App() {
   const [productList, setProductList] = React.useState([]);
@@ -31,21 +33,32 @@ function App() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
 
-  React.useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch("/api/products");
-        if (!response.ok) throw new Error("Failed to fetch products");
-        const data = await response.json();
-        setProductList(data);
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
+React.useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const API_URL = process.env.admin === 'front-end-admin' 
+        ? 'http://localhost:3000'
+        : '';
+        
+      const response = await fetch(`${API_URL}/api/products`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch products: ${response.status}`);
       }
-    };
-    fetchProducts();
-  }, []);
+      
+      const data = await response.json();
+      setProductList(data);
+    } catch (error) {
+      setError(error.message);
+      console.error("Product fetch error details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchProducts();
+}, []);
 
   React.useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
@@ -112,6 +125,11 @@ function App() {
             <Route path="/admin/categories/edit/:id" element={
               <PrivateRoute>
                 <CategoryForm />
+              </PrivateRoute>
+            } />
+            <Route path="/admin/inventory" element={
+              <PrivateRoute>
+                <InventoryList />
               </PrivateRoute>
             } />
 

@@ -1,20 +1,15 @@
-// db-setup.js
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
 
-// Database configuration from environment variables
 const dbConfig = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
 };
 
-// Database name from environment variable
 const DB_NAME = process.env.DB_NAME;
-
-// SQL statements from the provided files
 const tableSchemaSQL = `
 -- Create Categories table
 CREATE TABLE IF NOT EXISTS Categories (
@@ -410,34 +405,28 @@ BEGIN
 END;
 `;
 
-// Function to execute SQL scripts
 async function executeSQLScripts() {
   let connection;
   let dbConnection;
   
   try {
-    // First connect to MySQL server without specifying a database
     connection = await mysql.createConnection(dbConfig);
     console.log('Connected to MySQL server');
-    
-    // Create the database if it doesn't exist
+ 
     await connection.query(`CREATE DATABASE IF NOT EXISTS ${DB_NAME}`);
     console.log(`Database '${DB_NAME}' created or already exists`);
-    
-    // Close initial connection
+
     await connection.end();
-    
-    // Connect to the specific database
+  
     const dbConnectionConfig = {
       ...dbConfig,
       database: DB_NAME,
-      multipleStatements: true // Enable multiple statements for procedures
+      multipleStatements: true 
     };
     
     dbConnection = await mysql.createConnection(dbConnectionConfig);
     console.log(`Connected to database '${DB_NAME}'`);
-    
-    // Execute table creation script
+
     console.log('Creating database tables...');
     await dbConnection.query(tableSchemaSQL);
     console.log('Database tables created successfully');

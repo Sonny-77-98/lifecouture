@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeCouture Admin</title>
+    <link rel="stylesheet" href="/src/style/admin.css">
+</head>
+<body>
+    <div id="admin-app">
+        <header class="admin-header">
+            <h1>LifeCouture Admin</h1>
+            <div class="user-info">
+                <span id="welcome-user">Welcome, Admin</span>
+                <button id="logout-btn" class="logout-btn">Logout</button>
+            </div>
+        </header>
+        
+        <div class="admin-content">
+            <div class="sidebar">
+                <div class="menu-section">
+                    <h3>Manage Products</h3>
+                    <ul>
+                        <li><a href="/admin/products" class="admin-link">View All Products</a></li>
+                        <li><a href="/admin/products/add" class="admin-link">Add New Product</a></li>
+                        <li><a href="/admin/categories" class="admin-link">Manage Categories</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="main-content" id="main-content">
+                <!-- This is where content will be loaded -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        });
+    </script>
+</body>
+</html>

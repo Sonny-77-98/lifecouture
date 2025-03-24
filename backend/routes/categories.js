@@ -1,0 +1,206 @@
+const express = require('express');
+const router = express.Router();
+const { query } = require('../config/db');
+const jwt = require('jsonwebtoken');
+require('dotenv').config({path: '.env.admin'});
+
+
+const authMiddleware = async (req, res, next) => {
+  // Get token from header
+  const token = req.header('x-auth-token');
+  
+  // Check if token exists
+  if (!token) {
+    return res.status(401).json({ message: 'No token, authorization denied' });
+  }
+  
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Check if user is admin
+    const user = await query('SELECT * FROM User WHERE usID = ? AND usRole = ?', [decoded.id, 'admin']);
+    
+    if (user.length === 0) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    // Add user info to request
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(401).json({ message: 'Token is not valid' });
+  }
+};
+
+// PUBLIC ROUTES
+
+// Get all categories
+router.get('/', async (req, res) => {
+  try {
+    let sql = 'SELECT * FROM Categories';
+    
+    // Add WHERE clause for status if provided
+    if (req.query.status) {
+      sql += ' WHERE catStat = ?';
+      const categories = await query(sql, [req.query.status]);
+      res.json(categories);
+    } else {
+      // Default to only active categories for public routes
+      sql += ' WHERE catStat = "active"';
+      const categories = await query(sql);
+      res.json(categories);
+    }
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get category by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const category = await query('SELECT * FROM Categories WHERE catID = ?', [req.params.id]);
+    
+    if (category.length === 0) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    
+    res.json(category[0]);
+  } catch (error) {
+    console.error('Error fetching category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get products by category ID
+router.get('/:id/products', async (req, res) => {
+  try {
+    const sql = `
+      SELECT p.* 
+      FROM Product p
+      JOIN ProductCategories pc ON p.prodID = pc.prodID
+      WHERE pc.catID = ? AND p.prodStat = 'active'
+    `;
+    
+    const products = await query(sql, [req.params.id]);
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching category products:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ADMIN ROUTES - Protected by authentication middleware
+
+// Create new category
+router.post('/', authMiddleware, async (req, res) => {
+  try {
+    const { catName, catDes, catStat, catSEO } = req.body;
+    
+    // Validate required fields
+    if (!catName) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+    
+    const result = await query(
+      'INSERT INTO Categories (catName, catDes, catStat, catSEO) VALUES (?, ?, ?, ?)',
+      [catName, catDes || '', catStat || 'active', catSEO || '']
+    );
+    
+    res.status(201).json({
+      message: 'Category created successfully',
+      categoryId: result.insertId
+    });
+  } catch (error) {
+    console.error('Error creating category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update category
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { catName, catDes, catStat, catSEO } = req.body;
+    
+    // Validate required fields
+    if (!catName) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+    
+    // Check if category exists
+    const existingCategory = await query('SELECT catID FROM Categories WHERE catID = ?', [req.params.id]);
+    if (existingCategory.length === 0) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    
+    await query(
+      'UPDATE Categories SET catName = ?, catDes = ?, catStat = ?, catSEO = ? WHERE catID = ?',
+      [catName, catDes || '', catStat || 'active', catSEO || '', req.params.id]
+    );
+    
+    res.json({ message: 'Category updated successfully' });
+  } catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update category status only
+router.patch('/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    // Check if category exists
+    const existingCategory = await query('SELECT catID FROM Categories WHERE catID = ?', [req.params.id]);
+    if (existingCategory.length === 0) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    
+    // Update only the status
+    await query(
+      'UPDATE Categories SET catStat = ? WHERE catID = ?',
+      [status, req.params.id]
+    );
+    
+    res.json({ message: 'Category status updated successfully' });
+  } catch (error) {
+    console.error('Error updating category status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete category
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    // First check if category exists
+    const existingCategory = await query('SELECT catID FROM Categories WHERE catID = ?', [req.params.id]);
+    if (existingCategory.length === 0) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    
+    // Check if category is in use by any products
+    const inUseCheck = await query(
+      'SELECT COUNT(*) as count FROM ProductCategories WHERE catID = ?', 
+      [req.params.id]
+    );
+    
+    if (inUseCheck[0].count > 0) {
+      return res.status(400).json({ 
+        message: 'Cannot delete category as it is associated with products',
+        count: inUseCheck[0].count
+      });
+    }
+    
+    // Delete the category
+    await query('DELETE FROM Categories WHERE catID = ?', [req.params.id]);
+    
+    res.json({ message: 'Category deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
