@@ -19,6 +19,7 @@ const CategoryForm = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState(false);
 
   // Status options
   const statusOptions = [
@@ -34,7 +35,10 @@ const CategoryForm = () => {
       try {
         setLoading(true);
         
+        // Get category without authentication for viewing
         const response = await axios.get(`/api/categories/${id}`);
+        
+        console.log('Category data loaded:', response.data);
         const category = response.data;
         
         setFormData({
@@ -58,7 +62,10 @@ const CategoryForm = () => {
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(prevState => ({
+      ...prevState,
+      [name]: value
+    }));
   };
   
   // Generate SEO slug from name
@@ -69,7 +76,10 @@ const CategoryForm = () => {
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
     
-    setFormData({ ...formData, catSEO: `life-couture-${slug}-streetwear` });
+    setFormData(prevState => ({
+      ...prevState,
+      catSEO: `life-couture-${slug}-streetwear`
+    }));
   };
   
   // Form submission
@@ -87,15 +97,29 @@ const CategoryForm = () => {
         catSEO: formData.catSEO
       };
       
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setAuthError(true);
+        setSubmitting(false);
+        return;
+      }
+      
+      console.log('Submitting category data:', categoryData);
+      
+      // Request configuration with auth header
+      const headers = { 'x-auth-token': token };
+      
       let response;
       
       if (isEditMode) {
         // Update existing category
-        response = await axios.put(`/api/categories/${id}`, categoryData);
+        response = await axios.put(`/api/categories/${id}`, categoryData, { headers });
         setSuccess('Category updated successfully');
       } else {
         // Create new category
-        response = await axios.post('/api/categories', categoryData);
+        response = await axios.post('/api/categories', categoryData, { headers });
         setSuccess('Category created successfully');
         
         // Clear form after successful creation
@@ -114,16 +138,49 @@ const CategoryForm = () => {
       
     } catch (err) {
       console.error('Error saving category:', err);
-      setError(err.response?.data?.message || 'Failed to save category');
+      
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setAuthError(true);
+      } else {
+        setError(err.response?.data?.message || 'Failed to save category');
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+  
+  // Show login form if auth error
+  const handleLogin = () => {
+    navigate('/login');
   };
   
   if (loading) {
     return (
       <div className="category-form-container">
         <div className="loading-indicator">Loading category data...</div>
+      </div>
+    );
+  }
+  
+  if (authError) {
+    return (
+      <div className="category-form-container">
+        <div className="form-header">
+          <h2>{isEditMode ? 'Edit Category' : 'Add New Category'}</h2>
+          <Link to="/admin/categories" className="back-link">
+            &larr; Back to Categories
+          </Link>
+        </div>
+        
+        <div className="auth-error-message">
+          <h3>Admin access required</h3>
+          <p>You must be logged in as an admin to {isEditMode ? 'edit' : 'add'} categories.</p>
+          <div className="auth-actions">
+            <button onClick={handleLogin} className="login-button">
+              Log In
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -159,7 +216,7 @@ const CategoryForm = () => {
           <textarea
             id="catDes"
             name="catDes"
-            value={formData.catDes}
+            value={formData.catDes || ''}
             onChange={handleChange}
             placeholder="Enter category description"
             rows="4"
@@ -172,7 +229,7 @@ const CategoryForm = () => {
             <select
               id="catStat"
               name="catStat"
-              value={formData.catStat}
+              value={formData.catStat || 'active'}
               onChange={handleChange}
               required
             >
@@ -191,7 +248,7 @@ const CategoryForm = () => {
                 type="text"
                 id="catSEO"
                 name="catSEO"
-                value={formData.catSEO}
+                value={formData.catSEO || ''}
                 onChange={handleChange}
                 placeholder="SEO-friendly string"
               />

@@ -1,10 +1,8 @@
- // inventory.js
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db');
 const { authMiddleware } = require('./authentication');
 
-// Get all inventory items with product details
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const sql = `
@@ -58,7 +56,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Adjust inventory (add or subtract)
 router.patch('/:id/adjust', authMiddleware, async (req, res) => {
   try {
     const { adjustment } = req.body;

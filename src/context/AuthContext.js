@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
+import createAuthAxios from './api';
 import axios from 'axios';
 
 export const AuthContext = createContext();
@@ -12,13 +13,18 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  const [api, setApi] = useState(createAuthAxios());
+  
+  useEffect(() => {
+    setApi(createAuthAxios());
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const checkLoggedIn = async () => {
       if (localStorage.getItem('token')) {
         try {
           setAuthToken(localStorage.getItem('token'));
-          
           const res = await axios.get('/api/auth/user');
           
           setUser(res.data);
@@ -50,6 +56,7 @@ export const AuthProvider = ({ children }) => {
       setAuthToken(res.data.token);
       setUser(res.data.user);
       setIsAuthenticated(true);
+      
       return true;
     } catch (err) {
       console.error('Login error:', err.response?.data || err.message);
@@ -60,12 +67,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
-    
     setAuthToken(null);
-    
     setUser(null);
     setIsAuthenticated(false);
   };
+  
   const setAuthToken = (token) => {
     if (token) {
       axios.defaults.headers.common['x-auth-token'] = token;
@@ -82,15 +88,11 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         error,
         login,
-        logout
+        logout,
+        api 
       }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
-
-
-
-
-

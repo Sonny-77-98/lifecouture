@@ -6,26 +6,22 @@ require('dotenv').config({path: '.env.admin'});
 
 
 const authMiddleware = async (req, res, next) => {
-  // Get token from header
   const token = req.header('x-auth-token');
-  
-  // Check if token exists
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
   
   try {
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Check if user is admin
-    const user = await query('SELECT * FROM User WHERE usID = ? AND usRole = ?', [decoded.id, 'admin']);
+    const user = await query('SELECT * FROM admin_users WHERE id = ? AND role = ?', 
+      [decoded.id, 'admin']
+    );
     
     if (user.length === 0) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
-    // Add user info to request
     req.user = decoded;
     next();
   } catch (error) {
@@ -36,21 +32,30 @@ const authMiddleware = async (req, res, next) => {
 
 // PUBLIC ROUTES
 
-// Get all categories
 router.get('/', async (req, res) => {
   try {
+    console.log('Categories GET route handler called!');
+    console.log('Request query params:', req.query);
+    
     let sql = 'SELECT * FROM Categories';
     
-    // Add WHERE clause for status if provided
+    if (req.query.includeAll === 'true') {
+      console.log('Including all categories without filtering');
+      const categories = await query(sql);
+      return res.json(categories);
+    }
+    
     if (req.query.status) {
       sql += ' WHERE catStat = ?';
+      console.log('Filtering by status:', req.query.status);
       const categories = await query(sql, [req.query.status]);
-      res.json(categories);
-    } else {
-      // Default to only active categories for public routes
-      sql += ' WHERE catStat = "active"';
+      return res.json(categories);
+    } 
+
+    else {
+      console.log('No status filter, returning all categories');
       const categories = await query(sql);
-      res.json(categories);
+      return res.json(categories);
     }
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -58,7 +63,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get category by ID
 router.get('/:id', async (req, res) => {
   try {
     const category = await query('SELECT * FROM Categories WHERE catID = ?', [req.params.id]);
@@ -94,7 +98,6 @@ router.get('/:id/products', async (req, res) => {
 
 // ADMIN ROUTES - Protected by authentication middleware
 
-// Create new category
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { catName, catDes, catStat, catSEO } = req.body;
@@ -171,7 +174,6 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
-// Delete category
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     // First check if category exists

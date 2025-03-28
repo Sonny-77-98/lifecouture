@@ -166,6 +166,83 @@
     font-size: 16px;
     color: #666;
   }
+  .auth-error-message {
+    background-color: #ffeeee;
+    border-left: 4px solid #e53935;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+  
+  .auth-error-message h3 {
+    color: #c62828;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  
+  .auth-error-message p {
+    color: #d32f2f;
+    margin-bottom: 15px;
+  }
+  
+  .auth-actions {
+    margin-top: 15px;
+  }
+  
+  .login-link {
+    display: inline-block;
+    background-color: #2196f3;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s;
+  }
+  
+  .login-link:hover {
+    background-color: #1976d2;
+    text-decoration: none;
+  }
+  
+  .seo-input-group {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .seo-input-group input {
+    flex: 1;
+  }
+  
+  .generate-seo-button {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .generate-seo-button:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .reload-button {
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  
+  .reload-button:hover {
+    background-color: #1976d2;
+  }
   
   /* Responsive layout */
   @media (max-width: 768px) {

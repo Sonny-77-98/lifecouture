@@ -13,13 +13,13 @@ const ProductForm = () => {
     prodDesc: '',
     prodStat: 'active',
     prodURL: '',
-    selectedCategories: [],
-    attributes: {}
+    imageUrl: '',
+    imageAlt: '',
+    selectedCategories: []
   });
   
   const [categories, setCategories] = useState([]);
-  const [attributes, setAttributes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -28,33 +28,21 @@ const ProductForm = () => {
   const statusOptions = [
     'active',
     'inactive',
-    'out_of_stock',
-    'discontinued'
   ];
   
-  // Fetch categories and attributes
+  // Fetch categories
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCategories = async () => {
       try {
-        setLoading(true);
-        
-        // Fetch categories
-        const categoriesRes = await axios.get('/api/categories');
-        setCategories(categoriesRes.data);
-        
-        // Fetch attributes
-        const attributesRes = await axios.get('/api/attributes');
-        setAttributes(attributesRes.data);
-        
-        setLoading(false);
+        const response = await axios.get('/api/categories');
+        setCategories(Array.isArray(response.data) ? response.data : []);
       } catch (err) {
-        console.error('Error fetching form data:', err);
-        setError('Failed to load categories and attributes');
-        setLoading(false);
+        console.error('Error fetching categories:', err);
+        setError('Failed to load categories. Please try again.');
       }
     };
     
-    fetchData();
+    fetchCategories();
   }, []);
   
   // Load product data if in edit mode
@@ -64,38 +52,42 @@ const ProductForm = () => {
       
       try {
         setLoading(true);
+        setError(null);
         
-        // Fetch product details
-        const productRes = await axios.get(`/api/products/${id}`);
-        const product = productRes.data;
+        const response = await axios.get(`/api/products/${id}`);
+        const product = response.data;
         
-        // Fetch product categories
-        const categoriesRes = await axios.get(`/api/products/${id}/categories`);
-        const productCategories = categoriesRes.data;
+        console.log('Product data:', product);
         
-        // Fetch product attributes
-        const attributesRes = await axios.get(`/api/products/${id}/attributes`);
-        const productAttributes = attributesRes.data;
+        // Set product categories
+        let productCategories = [];
+        if (product.categories) {
+          productCategories = Array.isArray(product.categories) 
+            ? product.categories.map(cat => cat.catID)
+            : [];
+        }
         
-        // Convert product attributes to object format
-        const attributesObj = {};
-        productAttributes.forEach(attr => {
-          attributesObj[attr.attID] = attr.value;
-        });
+        let imageUrl = '';
+        let imageAlt = '';
+        if (product.images && product.images.length > 0) {
+          imageUrl = product.images[0].imgURL;
+          imageAlt = product.images[0].imgAlt;
+        }
         
         setFormData({
           prodTitle: product.prodTitle || '',
           prodDesc: product.prodDesc || '',
           prodStat: product.prodStat || 'active',
           prodURL: product.prodURL || '',
-          selectedCategories: productCategories.map(cat => cat.catID),
-          attributes: attributesObj
+          imageUrl: imageUrl,
+          imageAlt: imageAlt,
+          selectedCategories: productCategories
         });
         
         setLoading(false);
       } catch (err) {
         console.error('Error fetching product:', err);
-        setError('Failed to load product information');
+        setError('Failed to load product information. Please try again.');
         setLoading(false);
       }
     };
@@ -123,17 +115,6 @@ const ProductForm = () => {
     setFormData({ ...formData, selectedCategories });
   };
   
-  // Handle attribute value changes
-  const handleAttributeChange = (attID, value) => {
-    setFormData({
-      ...formData,
-      attributes: {
-        ...formData.attributes,
-        [attID]: value
-      }
-    });
-  };
-  
   // Generate URL slug from title
   const generateSlug = () => {
     const slug = formData.prodTitle
@@ -153,16 +134,20 @@ const ProductForm = () => {
     setSuccess(null);
     
     try {
-      let response;
-      
+      // Prepare product data for submission
       const productData = {
         prodTitle: formData.prodTitle,
         prodDesc: formData.prodDesc,
         prodStat: formData.prodStat,
         prodURL: formData.prodURL,
-        categories: formData.selectedCategories,
-        attributes: formData.attributes
+        imageUrl: formData.imageUrl,
+        imageAlt: formData.imageAlt || formData.prodTitle,
+        categories: formData.selectedCategories
       };
+      
+      console.log('Submitting product data:', productData);
+      
+      let response;
       
       if (isEditMode) {
         // Update existing product
@@ -179,25 +164,26 @@ const ProductForm = () => {
           prodDesc: '',
           prodStat: 'active',
           prodURL: '',
-          selectedCategories: [],
-          attributes: {}
+          imageUrl: '',
+          imageAlt: '',
+          selectedCategories: []
         });
       }
       
-      // Optional: redirect after a delay
+      // Redirect after a short delay
       setTimeout(() => {
         navigate('/admin/products');
-      }, 2000);
+      }, 1500);
       
     } catch (err) {
       console.error('Error saving product:', err);
-      setError(err.response?.data?.message || 'Failed to save product');
+      setError(err.response?.data?.message || 'Failed to save product. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
   
-  if (loading && isEditMode) {
+  if (loading) {
     return (
       <div className="product-form-container">
         <div className="loading-indicator">Loading product data...</div>
@@ -287,12 +273,48 @@ const ProductForm = () => {
                 </select>
               </div>
             </div>
+            
+            <div className="form-group">
+              <label htmlFor="imageUrl">Image URL</label>
+              <input
+                type="text"
+                id="imageUrl"
+                name="imageUrl"
+                value={formData.imageUrl}
+                onChange={handleChange}
+                placeholder="Enter image URL"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="imageAlt">Image Alt Text</label>
+              <input
+                type="text"
+                id="imageAlt"
+                name="imageAlt"
+                value={formData.imageAlt}
+                onChange={handleChange}
+                placeholder="Enter image alt text"
+              />
+            </div>
+            
+            {formData.imageUrl && (
+              <div className="image-preview">
+                <h4>Image Preview</h4>
+                <img 
+                  src={formData.imageUrl} 
+                  alt={formData.imageAlt || formData.prodTitle}
+                  className="preview-image"
+                  onError={(e) => {e.target.src = "https://i.imgur.com/defaultImage.jpg"}}
+                />
+              </div>
+            )}
           </div>
           
           <div className="form-right">
             <div className="form-group">
               <label>Categories*</label>
-              {loading ? (
+              {categories.length === 0 ? (
                 <p>Loading categories...</p>
               ) : (
                 <div className="categories-list">
@@ -313,26 +335,6 @@ const ProductForm = () => {
                 <p className="validation-message">Select at least one category</p>
               )}
             </div>
-            
-            {attributes.length > 0 && (
-              <div className="form-group">
-                <label>Product Attributes</label>
-                <div className="attributes-list">
-                  {attributes.map(attr => (
-                    <div key={attr.attID} className="attribute-input">
-                      <label htmlFor={`attr-${attr.attID}`}>{attr.attName}:</label>
-                      <input
-                        type="text"
-                        id={`attr-${attr.attID}`}
-                        value={formData.attributes[attr.attID] || ''}
-                        onChange={(e) => handleAttributeChange(attr.attID, e.target.value)}
-                        placeholder={`Enter ${attr.attName.toLowerCase()}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
         

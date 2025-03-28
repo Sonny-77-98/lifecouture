@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
+import '../../style/CategoryList.css';
 
 const CategoryList = () => {
+  const { isAuthenticated } = useContext(AuthContext);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [authError, setAuthError] = useState(false);
 
   // Status options
   const statusOptions = [
@@ -15,11 +19,17 @@ const CategoryList = () => {
     'inactive'
   ];
   
+  // Function to get auth token
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+  
   // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
+        setError(null);
         
         // Build query parameters
         let url = '/api/categories';
@@ -27,13 +37,28 @@ const CategoryList = () => {
           url += `?status=${filterStatus}`;
         }
         
+        console.log('Fetching categories from:', url);
         const response = await axios.get(url);
-        setCategories(response.data);
+        console.log('Categories response:', response.data);
+        
+        // Ensure categories is always an array
+        const categoriesData = Array.isArray(response.data) 
+          ? response.data 
+          : [];
+          
+        setCategories(categoriesData);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching categories:', err);
-        setError('Failed to load categories');
+        
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          setAuthError(true);
+        } else {
+          setError('Failed to load categories');
+        }
+        
         setLoading(false);
+        setCategories([]); // Set empty array on error
       }
     };
     
@@ -42,8 +67,33 @@ const CategoryList = () => {
   
   // Handle status change
   const handleStatusChange = async (categoryId, newStatus) => {
+    if (!isAuthenticated) {
+      setAuthError(true);
+      return;
+    }
+    
     try {
-      await axios.patch(`/api/categories/${categoryId}/status`, { status: newStatus });
+      setError(null);
+      
+      // Get token from localStorage
+      const token = getAuthToken();
+      
+      if (!token) {
+        setAuthError(true);
+        return;
+      }
+      
+      // Make the request with auth token
+      await axios.patch(
+        `/api/categories/${categoryId}/status`, 
+        { status: newStatus },
+        { 
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-auth-token': token
+          } 
+        }
+      );
       
       // Update local state
       setCategories(categories.map(category => 
@@ -53,23 +103,49 @@ const CategoryList = () => {
       ));
     } catch (err) {
       console.error('Error updating category status:', err);
-      setError('Failed to update category status');
+      
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setAuthError(true);
+      } else {
+        setError('Failed to update category status');
+      }
     }
   };
   
   // Handle delete
   const handleDelete = async (categoryId) => {
+    if (!isAuthenticated) {
+      setAuthError(true);
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
       try {
-        await axios.delete(`/api/categories/${categoryId}`);
+        setError(null);
+        
+        // Get token from localStorage
+        const token = getAuthToken();
+        
+        if (!token) {
+          setAuthError(true);
+          return;
+        }
+        
+        // Make the request with auth token
+        await axios.delete(`/api/categories/${categoryId}`, {
+          headers: {
+            'x-auth-token': token
+          }
+        });
         
         // Remove from local state
         setCategories(categories.filter(category => category.catID !== categoryId));
       } catch (err) {
         console.error('Error deleting category:', err);
         
-        // Special handling for the case where category is in use
-        if (err.response?.status === 400 && err.response?.data?.count) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          setAuthError(true);
+        } else if (err.response?.status === 400 && err.response?.data?.count) {
           alert(`Cannot delete this category because it is used by ${err.response.data.count} products.`);
         } else {
           setError('Failed to delete category');
@@ -78,13 +154,15 @@ const CategoryList = () => {
     }
   };
   
-  // Filter categories based on search term
-  const filteredCategories = categories.filter(category => {
-    return (
-      category.catName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (category.catDes && category.catDes.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  });
+  // Filter categories based on search term - ensure categories is an array first
+  const filteredCategories = Array.isArray(categories) 
+    ? categories.filter(category => {
+        return (
+          (category.catName && category.catName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (category.catDes && category.catDes.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+      })
+    : [];
   
   if (loading) {
     return (
@@ -104,6 +182,12 @@ const CategoryList = () => {
       </div>
       
       {error && <div className="error-message">{error}</div>}
+      {authError && (
+        <div className="auth-error-message">
+          <p>Admin access required for this action. Please log in with an admin account.</p>
+          <Link to="/login" className="login-link">Log In</Link>
+        </div>
+      )}
       
       <div className="filters-container">
         <div className="search-container">
@@ -138,6 +222,12 @@ const CategoryList = () => {
       {filteredCategories.length === 0 ? (
         <div className="no-categories-found">
           <p>No categories found matching your criteria.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="reload-button"
+          >
+            Reload Categories
+          </button>
         </div>
       ) : (
         <div className="category-table-container">
@@ -167,9 +257,9 @@ const CategoryList = () => {
                   </td>
                   <td>
                     <select
-                      value={category.catStat}
+                      value={category.catStat || 'active'}
                       onChange={(e) => handleStatusChange(category.catID, e.target.value)}
-                      className={`status-select status-${category.catStat}`}
+                      className={`status-select status-${category.catStat || 'active'}`}
                     >
                       {statusOptions.map(status => (
                         <option key={status} value={status}>

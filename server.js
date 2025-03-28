@@ -20,6 +20,10 @@ app.use(cors());
 
 // Serve static files from the build directory
 app.use(express.static(path.join(__dirname, 'build')));
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 // MySQL connection pool setup
 const pool = mysql.createPool({
@@ -35,8 +39,15 @@ const pool = mysql.createPool({
 // API Routes
 const inventoryRoutes = require('./backend/routes/inventory');
 app.use('/api/inventory', inventoryRoutes);
+
 const { router: authRouter } = require('./backend/routes/authentication');
 app.use('/api/auth', authRouter);
+
+const categoryRoutes = require('./backend/routes/categories');
+app.use('/api/categories', categoryRoutes);
+
+const productsRouter = require('./backend/routes/products');
+app.use('/api/products', productsRouter);
 
 // Fetch products from the database
 app.get('/api/products', async (req, res) => {

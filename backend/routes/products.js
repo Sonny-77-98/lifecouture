@@ -6,24 +6,20 @@ require('dotenv').config({path: '.env.admin'});
 
 // Authentication middleware - verify token
 const authMiddleware = async (req, res, next) => {
-  // Get token from header
   const token = req.header('x-auth-token');
-  
-  // Check if token exists
+
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
   
   try {
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await query('SELECT * FROM User WHERE usID = ? AND usRole = ?', [decoded.id, 'admin']);
+    const user = await query('SELECT * FROM admin_users WHERE id = ? AND role = ?', [decoded.id, 'admin']);
     
     if (user.length === 0) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
-    // Add user info to request
     req.user = decoded;
     next();
   } catch (error) {
@@ -37,16 +33,17 @@ const authMiddleware = async (req, res, next) => {
 router.get('/', async (req, res) => {
   try {
     let sql = `
-      SELECT p.*, 
+      SELECT p.prodID, p.prodTitle, p.prodDesc, p.prodURL, p.prodStat, 
+             GROUP_CONCAT(DISTINCT c.catName) as categoryNames,
              GROUP_CONCAT(DISTINCT pc.catID) as categoryIds
       FROM Product p
       LEFT JOIN ProductCategories pc ON p.prodID = pc.prodID
+      LEFT JOIN Categories c ON pc.catID = c.catID
     `;
     
     const params = [];
     const whereConditions = [];
     
-    // Category filter
     if (req.query.category) {
       whereConditions.push(`
         p.prodID IN (
@@ -57,7 +54,6 @@ router.get('/', async (req, res) => {
       params.push(req.query.category);
     }
     
-    // Status filter
     if (req.query.status) {
       whereConditions.push('p.prodStat = ?');
       params.push(req.query.status);
@@ -67,7 +63,7 @@ router.get('/', async (req, res) => {
       sql += ' WHERE ' + whereConditions.join(' AND ');
     }
 
-    sql += ' GROUP BY p.prodID';
+    sql += ' GROUP BY p.prodID, p.prodTitle, p.prodDesc, p.prodURL, p.prodStat';
  
     sql += ' ORDER BY p.prodID DESC';
     
@@ -75,18 +71,23 @@ router.get('/', async (req, res) => {
 
     const transformedProducts = await Promise.all(products.map(async (product) => {
       const images = await query('SELECT * FROM ProductImages WHERE prodID = ? LIMIT 1', [product.prodID]);
- 
+  
       if (product.categoryIds) {
         product.categories = product.categoryIds.split(',').map(id => parseInt(id));
+        product.categoryList = product.categoryNames ? product.categoryNames.split(',') : [];
       } else {
         product.categories = [];
+        product.categoryList = [];
       }
+      
       if (images.length > 0) {
         product.imageUrl = images[0].imgURL;
         product.imageAlt = images[0].imgAlt;
       }
-      
+
       delete product.categoryIds;
+      delete product.categoryNames;
+      
       return product;
     }));
     
@@ -132,8 +133,7 @@ router.get('/:id', async (req, res) => {
       JOIN ProductAttributes a ON pa.attID = a.attID
       WHERE pa.prodID = ?
     `, [req.params.id]);
-    
-    // Get product images
+
     const images = await query('SELECT * FROM ProductImages WHERE prodID = ?', [req.params.id]);
     
     productData.categories = categories;
@@ -147,7 +147,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get product categories
 router.get('/:id/categories', async (req, res) => {
   try {
     const sql = `
@@ -167,11 +166,9 @@ router.get('/:id/categories', async (req, res) => {
 
 // ADMIN ROUTES - Protected by authentication middleware
 
-// Create a new product with categories and attributes
 router.post('/', authMiddleware, async (req, res) => {
   let connection;
   try {
-    // Parse JSON strings if needed
     let categories = req.body.categories;
     let attributes = req.body.attributes;
     
@@ -193,32 +190,27 @@ router.post('/', authMiddleware, async (req, res) => {
     
     const { prodTitle, prodDesc, prodURL, prodStat, imageUrl, imageAlt } = req.body;
     
-    // Validate input
     if (!prodTitle || !prodDesc) {
       return res.status(400).json({ message: 'Product title and description are required' });
     }
-    
-    // Get a connection for transaction
-    connection = await require('../config/db').getConnection();
+    const { pool } = require('../config/db');
+    connection = await pool.getConnection();
     await connection.beginTransaction();
-    
-    // Insert product
+
     const [productResult] = await connection.execute(
       'INSERT INTO Product (prodTitle, prodDesc, prodURL, prodStat) VALUES (?, ?, ?, ?)',
-      [prodTitle, prodDesc, prodURL || prodTitle.toLowerCase().replace(/\s+/g, '-'), prodStat || 'active']
+        [prodTitle, prodDesc, prodURL, prodStat]
     );
     
     const productId = productResult.insertId;
-    
-    // Add image URL if provided
+
     if (imageUrl) {
       await connection.execute(
         'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
         [imageUrl, imageAlt || prodTitle, productId]
       );
     }
-    
-    // Insert categories if provided
+
     if (categories && categories.length > 0) {
       for (const catID of categories) {
         await connection.execute(
@@ -227,8 +219,7 @@ router.post('/', authMiddleware, async (req, res) => {
         );
       }
     }
-    
-    // Insert attributes if provided
+
     if (attributes && Object.keys(attributes).length > 0) {
       for (const [attID, value] of Object.entries(attributes)) {
         if (value) {
@@ -239,8 +230,7 @@ router.post('/', authMiddleware, async (req, res) => {
         }
       }
     }
-    
-    // Commit transaction
+
     await connection.commit();
     
     res.status(201).json({
@@ -248,7 +238,6 @@ router.post('/', authMiddleware, async (req, res) => {
       productId: productId
     });
   } catch (error) {
-    // Rollback on error
     if (connection) {
       await connection.rollback();
     }
@@ -262,11 +251,9 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Update an existing product with categories and attributes
 router.put('/:id', authMiddleware, async (req, res) => {
   let connection;
   try {
-    // Parse JSON strings if needed
     let categories = req.body.categories;
     let attributes = req.body.attributes;
     
@@ -288,50 +275,42 @@ router.put('/:id', authMiddleware, async (req, res) => {
     
     const { prodTitle, prodDesc, prodURL, prodStat, imageUrl, imageAlt } = req.body;
     const productId = req.params.id;
-    
-    // Validate input
+
     if (!prodTitle || !prodDesc) {
       return res.status(400).json({ message: 'Product title and description are required' });
     }
-    
-    // Check if product exists
+
     const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
     
     if (product.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    
-    // Get a connection for transaction
+
     connection = await require('../config/db').getConnection();
     await connection.beginTransaction();
-    
-    // Update product
+
     await connection.execute(
       'UPDATE Product SET prodTitle = ?, prodDesc = ?, prodURL = ?, prodStat = ? WHERE prodID = ?',
       [prodTitle, prodDesc, prodURL || prodTitle.toLowerCase().replace(/\s+/g, '-'), prodStat || 'active', productId]
     );
-    
-    // Update image if provided
+
     if (imageUrl) {
-      // Check if product already has images
       const images = await connection.execute('SELECT * FROM ProductImages WHERE prodID = ?', [productId]);
       
       if (images[0].length > 0) {
-        // Update existing primary image
+
         await connection.execute(
-          'UPDATE ProductImages SET imgURL = ?, imgAlt = ? WHERE prodID = ? AND imgID = ?',
-          [imageUrl, imageAlt || prodTitle, productId, images[0][0].imgID]
+          'UPDATE ProductImages SET imgURL = ? WHERE prodID = ? AND imgID = ?',
+          [imageUrl, productId, images[0][0].imgID]
         );
       } else {
-        // Insert new image
         await connection.execute(
           'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
           [imageUrl, imageAlt || prodTitle, productId]
         );
       }
     }
-    
-    // Update categories - delete existing and insert new
+
     await connection.execute('DELETE FROM ProductCategories WHERE prodID = ?', [productId]);
     
     if (categories && categories.length > 0) {
@@ -342,8 +321,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         );
       }
     }
-    
-    // Update attributes - delete existing and insert new
+
     await connection.execute('DELETE FROM ProductAttributes WHERE prodID = ?', [productId]);
     
     if (attributes && Object.keys(attributes).length > 0) {
@@ -357,7 +335,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
       }
     }
     
-    // Commit transaction
     await connection.commit();
     
     res.json({
@@ -365,7 +342,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
       productId: productId
     });
   } catch (error) {
-    // Rollback on error
     if (connection) {
       await connection.rollback();
     }
@@ -379,20 +355,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Update product status only
 router.patch('/:id/status', authMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const productId = req.params.id;
-    
-    // Check if product exists
+
     const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
     
     if (product.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    
-    // Update only the status
     await query(
       'UPDATE Product SET prodStat = ? WHERE prodID = ?',
       [status, productId]
@@ -405,39 +377,31 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
-// Delete a product
 router.delete('/:id', authMiddleware, async (req, res) => {
   let connection;
   try {
     const productId = req.params.id;
-    
-    // Check if product exists
+
     const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
     
     if (product.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    
-    // Get a connection for transaction
+ 
     connection = await require('../config/db').getConnection();
     await connection.beginTransaction();
-    
-    // Delete related data first
+
     await connection.execute('DELETE FROM ProductCategories WHERE prodID = ?', [productId]);
     await connection.execute('DELETE FROM ProductAttributes WHERE prodID = ?', [productId]);
-    
-    // Delete image records
+
     await connection.execute('DELETE FROM ProductImages WHERE prodID = ?', [productId]);
-    
-    // Delete product
+
     await connection.execute('DELETE FROM Product WHERE prodID = ?', [productId]);
-    
-    // Commit transaction
+
     await connection.commit();
     
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
-    // Rollback on error
     if (connection) {
       await connection.rollback();
     }

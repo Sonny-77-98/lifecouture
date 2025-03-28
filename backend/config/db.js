@@ -1,9 +1,7 @@
-// backend/config/db.js
 const mysql = require('mysql2/promise');
 const path = require('path');
 const fs = require('fs');
 
-// Load environment variables from .env.admin
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env.admin') });
 
 // Database connection pool configuration

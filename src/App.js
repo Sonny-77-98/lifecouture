@@ -26,6 +26,8 @@ import './style/ProductForm.css';
 import './style/CategoryList.css';
 import './style/CategoryForm.css';
 import './style/InventoryList.css';
+import './style/admin.css';
+import './style/Contact.css';
 
 function App() {
   const [productList, setProductList] = React.useState([]);
