@@ -287,7 +287,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    connection = await require('../config/db').getConnection();
+    const { pool } = require('../config/db');
+    connection = await pool.getConnection();
     await connection.beginTransaction();
 
     await connection.execute(
@@ -309,30 +310,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
           'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
           [imageUrl, imageAlt || prodTitle, productId]
         );
-      }
-    }
-
-    await connection.execute('DELETE FROM ProductCategories WHERE prodID = ?', [productId]);
-    
-    if (categories && categories.length > 0) {
-      for (const catID of categories) {
-        await connection.execute(
-          'INSERT INTO ProductCategories (prodID, catID) VALUES (?, ?)',
-          [productId, catID]
-        );
-      }
-    }
-
-    await connection.execute('DELETE FROM ProductAttributes WHERE prodID = ?', [productId]);
-    
-    if (attributes && Object.keys(attributes).length > 0) {
-      for (const [attID, value] of Object.entries(attributes)) {
-        if (value) {
-          await connection.execute(
-            'INSERT INTO ProductAttributes (prodID, attID, value) VALUES (?, ?, ?)',
-            [productId, attID, value]
-          );
-        }
       }
     }
     
@@ -388,17 +365,49 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     if (product.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
- 
-    connection = await require('../config/db').getConnection();
+
+    connection = await require('../config/db').pool.getConnection();
     await connection.beginTransaction();
 
-    await connection.execute('DELETE FROM ProductCategories WHERE prodID = ?', [productId]);
-    await connection.execute('DELETE FROM ProductAttributes WHERE prodID = ?', [productId]);
+    const [variants] = await connection.execute(
+      'SELECT varID FROM ProductVariants WHERE prodID = ?', 
+      [productId]
+    );
 
-    await connection.execute('DELETE FROM ProductImages WHERE prodID = ?', [productId]);
-
-    await connection.execute('DELETE FROM Product WHERE prodID = ?', [productId]);
-
+    if (variants && variants.length > 0) {
+      for (const variant of variants) {
+        await connection.execute(
+          'DELETE FROM VariantAttributesValues WHERE varID = ?',
+          [variant.varID]
+        );
+        
+        await connection.execute(
+          'DELETE FROM Inventory WHERE varID = ?',
+          [variant.varID]
+        );
+      }
+      
+      await connection.execute(
+        'DELETE FROM ProductVariants WHERE prodID = ?',
+        [productId]
+      );
+    }
+    
+    await connection.execute(
+      'DELETE FROM ProductCategories WHERE prodID = ?', 
+      [productId]
+    );
+    
+    await connection.execute(
+      'DELETE FROM ProductImages WHERE prodID = ?', 
+      [productId]
+    );
+    
+    await connection.execute(
+      'DELETE FROM Product WHERE prodID = ?', 
+      [productId]
+    );
+    
     await connection.commit();
     
     res.json({ message: 'Product deleted successfully' });
