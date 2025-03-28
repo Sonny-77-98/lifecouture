@@ -128,10 +128,11 @@ router.get('/:id', async (req, res) => {
 
     
     const attributes = await query(`
-      SELECT pa.*, a.attName 
-      FROM ProductAttributes pa
-      JOIN ProductAttributes a ON pa.attID = a.attID
-      WHERE pa.prodID = ?
+      SELECT pav.*, pa.attName 
+      FROM VariantAttributesValues pav
+      JOIN ProductAttributes pa ON pav.attID = pa.attID
+      JOIN ProductVariants pv ON pav.varID = pv.varID
+      WHERE pv.prodID = ?
     `, [req.params.id]);
 
     const images = await query('SELECT * FROM ProductImages WHERE prodID = ?', [req.params.id]);
