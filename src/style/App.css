@@ -109,6 +109,6 @@ button:hover {
 }
 
 .products, .container {
-  border: 1px solid red;
-  background-color: lightyellow;
+  border: 1px solid gray;
+  background-color: lavender;
 }
