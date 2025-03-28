@@ -19,19 +19,15 @@ const CategoryList = () => {
     'inactive'
   ];
   
-  // Function to get auth token
   const getAuthToken = () => {
     return localStorage.getItem('token');
   };
   
-  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Build query parameters
         let url = '/api/categories';
         if (filterStatus) {
           url += `?status=${filterStatus}`;
@@ -40,8 +36,7 @@ const CategoryList = () => {
         console.log('Fetching categories from:', url);
         const response = await axios.get(url);
         console.log('Categories response:', response.data);
-        
-        // Ensure categories is always an array
+
         const categoriesData = Array.isArray(response.data) 
           ? response.data 
           : [];
@@ -58,14 +53,13 @@ const CategoryList = () => {
         }
         
         setLoading(false);
-        setCategories([]); // Set empty array on error
+        setCategories([]); 
       }
     };
     
     fetchCategories();
   }, [filterStatus]);
-  
-  // Handle status change
+
   const handleStatusChange = async (categoryId, newStatus) => {
     if (!isAuthenticated) {
       setAuthError(true);
@@ -75,15 +69,13 @@ const CategoryList = () => {
     try {
       setError(null);
       
-      // Get token from localStorage
       const token = getAuthToken();
       
       if (!token) {
         setAuthError(true);
         return;
       }
-      
-      // Make the request with auth token
+
       await axios.patch(
         `/api/categories/${categoryId}/status`, 
         { status: newStatus },
@@ -95,7 +87,6 @@ const CategoryList = () => {
         }
       );
       
-      // Update local state
       setCategories(categories.map(category => 
         category.catID === categoryId 
           ? { ...category, catStat: newStatus } 
@@ -111,8 +102,7 @@ const CategoryList = () => {
       }
     }
   };
-  
-  // Handle delete
+
   const handleDelete = async (categoryId) => {
     if (!isAuthenticated) {
       setAuthError(true);
@@ -122,23 +112,19 @@ const CategoryList = () => {
     if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
       try {
         setError(null);
-        
-        // Get token from localStorage
         const token = getAuthToken();
         
         if (!token) {
           setAuthError(true);
           return;
         }
-        
-        // Make the request with auth token
+
         await axios.delete(`/api/categories/${categoryId}`, {
           headers: {
             'x-auth-token': token
           }
         });
-        
-        // Remove from local state
+
         setCategories(categories.filter(category => category.catID !== categoryId));
       } catch (err) {
         console.error('Error deleting category:', err);
@@ -154,7 +140,7 @@ const CategoryList = () => {
     }
   };
   
-  // Filter categories based on search term - ensure categories is an array first
+  // Filter categories based on search term 
   const filteredCategories = Array.isArray(categories) 
     ? categories.filter(category => {
         return (

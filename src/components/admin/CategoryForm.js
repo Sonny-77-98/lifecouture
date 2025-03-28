@@ -21,21 +21,18 @@ const CategoryForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState(false);
 
-  // Status options
   const statusOptions = [
     'active',
     'inactive'
   ];
-  
-  // Load category data if in edit mode
+
   useEffect(() => {
     const fetchCategory = async () => {
       if (!isEditMode) return;
       
       try {
         setLoading(true);
-        
-        // Get category without authentication for viewing
+
         const response = await axios.get(`/api/categories/${id}`);
         
         console.log('Category data loaded:', response.data);
@@ -58,8 +55,7 @@ const CategoryForm = () => {
     
     fetchCategory();
   }, [id, isEditMode]);
-  
-  // Handle form input changes
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
@@ -68,7 +64,6 @@ const CategoryForm = () => {
     }));
   };
   
-  // Generate SEO slug from name
   const generateSEOSlug = () => {
     const slug = formData.catName
       .toLowerCase()
@@ -82,7 +77,6 @@ const CategoryForm = () => {
     }));
   };
   
-  // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -97,7 +91,6 @@ const CategoryForm = () => {
         catSEO: formData.catSEO
       };
       
-      // Get token from localStorage
       const token = localStorage.getItem('token');
       
       if (!token) {
@@ -107,22 +100,19 @@ const CategoryForm = () => {
       }
       
       console.log('Submitting category data:', categoryData);
-      
-      // Request configuration with auth header
+
       const headers = { 'x-auth-token': token };
       
       let response;
       
       if (isEditMode) {
-        // Update existing category
+
         response = await axios.put(`/api/categories/${id}`, categoryData, { headers });
         setSuccess('Category updated successfully');
       } else {
-        // Create new category
         response = await axios.post('/api/categories', categoryData, { headers });
         setSuccess('Category created successfully');
-        
-        // Clear form after successful creation
+
         setFormData({
           catName: '',
           catDes: '',

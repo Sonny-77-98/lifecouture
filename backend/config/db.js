@@ -4,7 +4,6 @@ const fs = require('fs');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env.admin') });
 
-// Database connection pool configuration
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -16,7 +15,6 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Helper function to execute SQL queries
 async function query(sql, params) {
   try {
     console.log(`Executing query: ${sql.substring(0, 100)}${sql.length > 100 ? '...' : ''}`);
@@ -28,7 +26,6 @@ async function query(sql, params) {
   }
 }
 
-// Test connection
 async function testConnection() {
   try {
     console.log('Testing database connection...');
@@ -43,12 +40,9 @@ async function testConnection() {
   }
 }
 
-// Check if database tables exist
 async function checkDatabaseTables() {
   try {
     console.log('Checking database tables...');
-    
-    // Get list of tables in the database
     const tables = await query(`
       SELECT TABLE_NAME 
       FROM information_schema.TABLES 

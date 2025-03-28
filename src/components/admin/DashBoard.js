@@ -35,8 +35,7 @@ const Dashboard = () => {
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
         setLoading(false);
-        
-        // Fallback to some default values if API fails
+
         setStats({
           totalProducts: 0,
           totalCategories: 0,

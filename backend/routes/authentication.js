@@ -37,10 +37,7 @@ router.post('/login', async (req, res) => {
     
     console.log(`Login attempt for username: ${username}`);
     
-    // Create connection
     const connection = await mysql.createConnection(dbConfig);
-    
-    // Check if user exists
     const [rows] = await connection.execute(
       'SELECT * FROM admin_users WHERE username = ?',
       [username]
@@ -55,7 +52,6 @@ router.post('/login', async (req, res) => {
     const user = rows[0];
     console.log(`User found: ${username}, ID: ${user.id}`);
     
-    // Compare passwords
     console.log(`Stored password hash: ${user.password}`);
     const isMatch = await bcrypt.compare(password, user.password);
     console.log(`Password match: ${isMatch}`);
@@ -70,7 +66,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
       JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '5h' }
     );
     
     await connection.end();
@@ -89,18 +85,14 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Setup route to create initial admin user
 router.post('/setup', async (req, res) => {
   try {
-    // Create connection
     const connection = await mysql.createConnection(dbConfig);
-    
-    // Check if admin_users table exists
+
     try {
       await connection.execute('SELECT 1 FROM admin_users LIMIT 1');
       console.log('admin_users table exists');
     } catch (error) {
-      // Table doesn't exist, create it
       console.log('Creating admin_users table');
       await connection.execute(`
         CREATE TABLE admin_users (
@@ -113,7 +105,6 @@ router.post('/setup', async (req, res) => {
       `);
     }
     
-    // Check if any admin exists
     const [adminCheck] = await connection.execute('SELECT COUNT(*) as count FROM admin_users');
     
     if (adminCheck[0].count > 0) {
@@ -121,7 +112,6 @@ router.post('/setup', async (req, res) => {
       return res.status(400).json({ message: 'Admin users already exist' });
     }
     
-    // Create default admin
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash('admin123', salt);
     
@@ -139,21 +129,15 @@ router.post('/setup', async (req, res) => {
   }
 });
 
-// Auth middleware for protected routes
 const authMiddleware = async (req, res, next) => {
-  // Get token from header
   const token = req.header('x-auth-token');
   
-  // Check if no token
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
   
   try {
-    // Verify token using our defined constant
     const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Set user from payload
     req.user = decoded;
     next();
   } catch (error) {
@@ -161,7 +145,6 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Protected route example
 router.get('/user', authMiddleware, async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);

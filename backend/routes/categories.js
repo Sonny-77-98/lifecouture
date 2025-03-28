@@ -78,7 +78,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get products by category ID
 router.get('/:id/products', async (req, res) => {
   try {
     const sql = `
@@ -102,7 +101,6 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     const { catName, catDes, catStat, catSEO } = req.body;
     
-    // Validate required fields
     if (!catName) {
       return res.status(400).json({ message: 'Category name is required' });
     }
@@ -122,17 +120,14 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Update category
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { catName, catDes, catStat, catSEO } = req.body;
-    
-    // Validate required fields
+
     if (!catName) {
       return res.status(400).json({ message: 'Category name is required' });
     }
-    
-    // Check if category exists
+
     const existingCategory = await query('SELECT catID FROM Categories WHERE catID = ?', [req.params.id]);
     if (existingCategory.length === 0) {
       return res.status(404).json({ message: 'Category not found' });
@@ -150,18 +145,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Update category status only
 router.patch('/:id/status', authMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
-    
-    // Check if category exists
     const existingCategory = await query('SELECT catID FROM Categories WHERE catID = ?', [req.params.id]);
     if (existingCategory.length === 0) {
       return res.status(404).json({ message: 'Category not found' });
     }
-    
-    // Update only the status
+
     await query(
       'UPDATE Categories SET catStat = ? WHERE catID = ?',
       [status, req.params.id]
@@ -176,13 +167,11 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
 
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    // First check if category exists
     const existingCategory = await query('SELECT catID FROM Categories WHERE catID = ?', [req.params.id]);
     if (existingCategory.length === 0) {
       return res.status(404).json({ message: 'Category not found' });
     }
-    
-    // Check if category is in use by any products
+s
     const inUseCheck = await query(
       'SELECT COUNT(*) as count FROM ProductCategories WHERE catID = ?', 
       [req.params.id]
@@ -195,7 +184,6 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       });
     }
     
-    // Delete the category
     await query('DELETE FROM Categories WHERE catID = ?', [req.params.id]);
     
     res.json({ message: 'Category deleted successfully' });
