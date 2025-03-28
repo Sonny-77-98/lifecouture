@@ -1,0 +1,52 @@
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+  }
+  
+  .status-active {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+  
+  .status-inactive {
+    background-color: #f5f5f5;
+    color: #757575;
+  }
+  
+  .status-out_of_stock {
+    background-color: #fff8e1;
+    color: #ff8f00;
+  }
+  
+  .status-discontinued {
+    background-color: #ffebee;
+    color: #c62828;
+  }
+  
+  .note-message {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    color: #0d47a1;
+  }
+  
+  .reload-button {
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  
+  .reload-button:hover {
+    background-color: #1976d2;
+  }

@@ -1,79 +1,125 @@
-// Load environment variables at the beginning
-require('dotenv').config();
+require('dotenv').config(); 
 
 const express = require('express');
 const mysql = require('mysql2/promise');
+const cors = require('cors');
 const path = require('path');
 const app = express();
+
 const PORT = process.env.PORT || 3000;
+const DB_HOST = process.env.DB_HOST;
+const DB_USER = process.env.DB_USER;
+const DB_PASSWORD = process.env.DB_PASSWORD;
+const DB_NAME = process.env.DB_NAME;
+const DB_PORT = process.env.DB_PORT || 3306;
+const DB_CONNECTION_LIMIT = process.env.DB_CONNECTION_LIMIT || 10; 
 
 // Middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
+app.use(cors());
+app.use(express.static(path.join(__dirname, 'build')));
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  host: DB_HOST,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  port: DB_PORT,
   waitForConnections: true,
-  connectionLimit: process.env.DB_CONNECTION_LIMIT || 10
+  connectionLimit: DB_CONNECTION_LIMIT,
 });
 
-// Simple API endpoint to get products
+// API Routes
+const inventoryRoutes = require('./backend/routes/inventory');
+app.use('/api/inventory', inventoryRoutes);
+
+const { router: authRouter } = require('./backend/routes/authentication');
+app.use('/api/auth', authRouter);
+
+const categoryRoutes = require('./backend/routes/categories');
+app.use('/api/categories', categoryRoutes);
+
+const productsRouter = require('./backend/routes/products');
+app.use('/api/products', productsRouter);
+
+// Fetch products from the database
 app.get('/api/products', async (req, res) => {
   try {
-    const dbName = process.env.DB_NAME || 'duclecik_LifeCouture';
-    console.log('Executing database query...');
-    console.log(`Using database: ${dbName}`);
-    
-    // Use fully qualified table name
-    const [products] = await pool.query(`SELECT * FROM \`${dbName}\`.\`Product\``);
-    
-    console.log(`Retrieved ${products.length} products from database`);
+    const [products] = await pool.query('SELECT * FROM Product');
     res.json(products);
   } catch (error) {
-    console.error('Database error details:', {
-      message: error.message,
-      code: error.code,
-      errno: error.errno,
-      sqlState: error.sqlState,
-      sqlMessage: error.sqlMessage
-    });
-    res.status(500).json({ 
-      error: 'Failed to fetch products',
-      details: error.message 
-    });
+    console.error("Error fetching products from DB:", error);
+    res.status(500).json({ error: 'Failed to fetch products', details: error.message });
   }
 });
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Serve HTML at root
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Backend database connection update
-async function testConnection() {
+app.post('/api/cart', async (req, res) => {
+  const { userID, prodID, quantity } = req.body;
   try {
-    const connection = await pool.getConnection();
-    console.log(`Database connection successful to ${process.env.DB_NAME || 'duclecik_LifeCouture'} at ${process.env.DB_HOST || 'cpanel.cikeys.com'}`);
-    connection.release();
-    return true;
+    await pool.query(
+      'INSERT INTO Cart (userID, prodID, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + ?',
+      [userID, prodID, quantity, quantity]
+    );
+    res.json({ message: 'Item added to cart' });
   } catch (error) {
-    console.error('Database connection failed:', error);
-    return false;
+    res.status(500).json({ error: 'Failed to add item to cart', details: error.message });
   }
-}
+});
 
-// Run connection test before starting server
-testConnection().then(() => {
-  // Start the server
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+app.get('/api/cart/:userID', async (req, res) => {
+  const { userID } = req.params;
+  try {
+    const [cart] = await pool.query('SELECT * FROM Cart WHERE userID = ?', [userID]);
+    res.json(cart);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch cart', details: error.message });
+  }
+});
+
+app.delete('/api/cart/:userID/:prodID', async (req, res) => {
+  const { userID, prodID } = req.params;
+  try {
+    await pool.query('DELETE FROM Cart WHERE userID = ? AND prodID = ?', [userID, prodID]);
+    res.json({ message: 'Item removed from cart' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to remove item from cart', details: error.message });
+  }
+});
+
+app.post('/api/checkout', async (req, res) => {
+  const { userID, items, totalAmount } = req.body;
+  try {
+    const [orderResult] = await pool.query('INSERT INTO Orders (userID, totalAmount) VALUES (?, ?)', [userID, totalAmount]);
+    const orderID = orderResult.insertId;
+
+    for (const item of items) {
+      await pool.query('INSERT INTO OrderItems (orderID, prodID, quantity) VALUES (?, ?, ?)', [orderID, item.prodID, item.quantity]);
+    }
+
+    await pool.query('DELETE FROM Cart WHERE userID = ?', [userID]);
+    res.json({ message: 'Order placed successfully', orderID });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to place order', details: error.message });
+  }
+});
+
+app.use((err, req, res, next) => {
+  if (err instanceof URIError) {
+    console.error('URI Error:', err.message);
+    return res.status(400).send('Bad Request - Invalid URI');
+  }
+  next(err);
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
