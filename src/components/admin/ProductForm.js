@@ -30,7 +30,6 @@ const ProductForm = () => {
     'inactive',
   ];
   
-  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -113,17 +112,6 @@ const ProductForm = () => {
     setFormData({ ...formData, selectedCategories });
   };
   
-  // Generate URL slug from title
-  const generateSlug = () => {
-    const slug = formData.prodTitle
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    
-    setFormData({ ...formData, prodURL: slug });
-  };
-  
   // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,7 +120,6 @@ const ProductForm = () => {
     setSuccess(null);
     
     try {
-      // Prepare product data for submission
       const productData = {
         prodTitle: formData.prodTitle,
         prodDesc: formData.prodDesc,
@@ -164,11 +151,9 @@ const ProductForm = () => {
           selectedCategories: []
         });
       }
-      
-      // Redirect after a short delay
       setTimeout(() => {
         navigate('/admin/products');
-      }, 1500);
+      }, 2000);
       
     } catch (err) {
       console.error('Error saving product:', err);

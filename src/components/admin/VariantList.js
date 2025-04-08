@@ -39,7 +39,6 @@ const VariantList = () => {
     }
   };
   
-  // Filter variants based on search term
   const filteredVariants = variants.filter(variant => 
     variant.varSKU?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (variant.varBCode && variant.varBCode.toLowerCase().includes(searchTerm.toLowerCase())) ||

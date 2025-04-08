@@ -8,11 +8,10 @@ const InventoryList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('all'); // 'all', 'low-stock'
+  const [filter, setFilter] = useState('all');
   const [editingItem, setEditingItem] = useState(null);
   const [newQuantity, setNewQuantity] = useState('');
   
-  // Fetch inventory on component mount
   useEffect(() => {
     const fetchInventory = async () => {
       try {
@@ -34,8 +33,7 @@ const InventoryList = () => {
     
     fetchInventory();
   }, [filter]);
-  
-  // Handle stock update
+
   const handleUpdateStock = async (invID) => {
     try {
       const quantity = parseInt(newQuantity);
@@ -46,15 +44,13 @@ const InventoryList = () => {
       }
       
       await axios.put(`/api/inventory/${invID}`, { newQuantity: quantity });
-      
-      // Update local state
+
       setInventory(inventory.map(item => 
         item.invID === invID 
           ? { ...item, invQty: quantity, isLowStock: quantity <= item.InvLowStockThreshold } 
           : item
       ));
-      
-      // Reset editing state
+
       setEditingItem(null);
       setNewQuantity('');
     } catch (err) {
@@ -63,12 +59,10 @@ const InventoryList = () => {
     }
   };
   
-  // Handle quick adjustment
   const handleQuickAdjust = async (invID, adjustment) => {
     try {
       const response = await axios.patch(`/api/inventory/${invID}/adjust`, { adjustment });
-      
-      // Update local state with returned updated item
+
       setInventory(inventory.map(item => 
         item.invID === invID ? response.data : item
       ));

@@ -14,31 +14,26 @@ const OrderForm = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   
-  // Form state
   const [formData, setFormData] = useState({
     customer: '',
     status: 'Pending',
     items: []
   });
-  
-  // Temporary state for adding new items
+
   const [newItem, setNewItem] = useState({
     product: '',
     variant: '',
     quantity: 1
   });
-  
-  // Load customers and products on component mount
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch customers
+
         const customersResponse = await axios.get('/api/users');
         setCustomers(Array.isArray(customersResponse.data) ? customersResponse.data : []);
-        
-        // Fetch products
+
         const productsResponse = await axios.get('/api/products');
         setProducts(Array.isArray(productsResponse.data) ? productsResponse.data : []);
         
@@ -52,8 +47,7 @@ const OrderForm = () => {
     
     fetchData();
   }, []);
-  
-  // Load existing order data if in edit mode
+
   useEffect(() => {
     const fetchOrderData = async () => {
       if (!isEditMode) return;
@@ -61,8 +55,7 @@ const OrderForm = () => {
       try {
         setLoading(true);
         const response = await axios.get(`/api/orders/${id}`);
-        
-        // Format the data for our form
+
         setFormData({
           customer: response.data.userID.toString(),
           status: response.data.orderStat,
@@ -87,8 +80,7 @@ const OrderForm = () => {
     
     fetchOrderData();
   }, [id, isEditMode]);
-  
-  // Fetch variants when a product is selected
+
   useEffect(() => {
     const fetchVariants = async () => {
       if (!newItem.product) {
@@ -242,8 +234,7 @@ const OrderForm = () => {
     
     try {
       setLoading(true);
-      
-      // Format items for API
+
       const formattedItems = formData.items.map(item => ({
         varID: item.variant,
         quantity: item.quantity,
@@ -253,7 +244,6 @@ const OrderForm = () => {
       
       let response;
       if (isEditMode) {
-        // Update existing order
         response = await axios.put(`/api/orders/${id}`, {
           userID: formData.customer,
           orderStat: formData.status,
@@ -273,8 +263,7 @@ const OrderForm = () => {
         
         setSuccess('Order created successfully');
       }
-      
-      // Redirect after successful submission
+
       setTimeout(() => {
         navigate('/admin/orders');
       }, 2000);

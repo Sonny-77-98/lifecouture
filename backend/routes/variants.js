@@ -54,7 +54,7 @@ router.post('/', async (req, res) => {
 
     await connection.execute(
       'INSERT INTO Inventory (invQty, InvLowStockThreshold, varID) VALUES (?, ?, ?)',
-      [0, 5, variantId] // Default values: 0 quantity, 5 low stock threshold
+      [0, 5, variantId]
     );
     
     await connection.commit();

@@ -100,7 +100,6 @@ router.get('/:id', async (req, res) => {
     }
     
     const order = orderResult[0];
-    // Modify this query to include price information
     const orderItems = await query(`
       SELECT oi.*, oi.prodUPrice as price, pv.varSKU as sku, p.prodTitle, p.prodID
       FROM OrderItems oi
@@ -161,10 +160,8 @@ router.post('/', authMiddleware, async (req, res) => {
     const orderID = orderResult.insertId;
     
     for (const item of items) {
-      // Get the price from the variant
       let price = item.price;
-      
-      // If price isn't provided, fetch it from the variant
+
       if (!price) {
         const priceResult = await query(
           'SELECT varPrice FROM ProductVariants WHERE varID = ?',
@@ -218,17 +215,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
     // Get a database connection for transaction
     connection = await require('../config/db').pool.getConnection();
     await connection.beginTransaction();
-    
-    // Update order details
+
     await connection.execute(
       'UPDATE Orders SET orderStat = ?, orderTotalAmt = ?, userID = ?, orderUpdatedAt = NOW() WHERE orderID = ?',
       [orderStat, orderTotalAmt, userID, req.params.id]
     );
-    
-    // Delete existing order items
+
     await connection.execute('DELETE FROM OrderItems WHERE orderID = ?', [req.params.id]);
-    
-    // Add new order items
+
     for (const item of items) {
       await connection.execute(
         'INSERT INTO OrderItems (orderVarQty, prodUPrice, orderID, varID) VALUES (?, ?, ?, ?)',

@@ -110,8 +110,6 @@ const VariantForm = () => {
       } else {
         response = await axios.post('/api/variants', formData);
         setSuccess('Variant created successfully');
-        
-        // Clear form after successful creation
         setFormData({
           varSKU: '',
           varBCode: '',
@@ -119,16 +117,13 @@ const VariantForm = () => {
           varPrice: 83.54
         });
       }
-      
-      // Redirect after successful submission
       setTimeout(() => {
         navigate('/admin/variants');
       }, 2000);
       
     } catch (err) {
       console.error('Error saving variant:', err);
-      
-      // Extract error details from response
+
       const errorMsg = err.response?.data?.message || 
                       err.response?.data?.error || 
                       'Failed to save variant. Please try again.';

@@ -18,7 +18,6 @@ const OrderList = () => {
     total: 0
   });
 
-  // Order status options
   const statusOptions = [
     'Pending',
     'Processing',
@@ -127,7 +126,6 @@ const OrderList = () => {
     fetchOrders(newPage, pagination.limit, filterStatus);
   };
   
-  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -140,17 +138,15 @@ const OrderList = () => {
     }).format(date);
   };
   
-  // Format currency for display
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount / 100); // Assuming amount is stored in cents
+    }).format(amount / 100);
   };
   
   // Filter orders based on search term
   const filteredOrders = orders.filter(order => {
-    // Search by order ID or customer name
     return (
       order.orderID.toString().includes(searchTerm) ||
       `${order.usFname} ${order.usLname}`.toLowerCase().includes(searchTerm.toLowerCase()) ||

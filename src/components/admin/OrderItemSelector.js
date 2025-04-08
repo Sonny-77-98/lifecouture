@@ -28,7 +28,6 @@ const OrderItemSelector = ({ onAddItem }) => {
     fetchProducts();
   }, []);
 
-  // Fetch variants when a product is selected
   useEffect(() => {
     const fetchVariants = async () => {
       if (!selectedProduct) {
@@ -53,7 +52,7 @@ const OrderItemSelector = ({ onAddItem }) => {
 
   const handleProductChange = (e) => {
     setSelectedProduct(e.target.value);
-    setSelectedVariant(''); // Reset variant when product changes
+    setSelectedVariant(''); 
   };
 
   const handleVariantChange = (e) => {
@@ -70,28 +69,24 @@ const OrderItemSelector = ({ onAddItem }) => {
       return;
     }
 
-    // Find the selected variant object
     const variant = variants.find(v => v.varID.toString() === selectedVariant);
     if (!variant) return;
 
-    // Find the selected product object
     const product = products.find(p => p.prodID.toString() === selectedProduct);
     if (!product) return;
 
-    // Create the item object to add to the order
     const item = {
       prodID: product.prodID,
       prodTitle: product.prodTitle,
       varID: variant.varID,
       varSKU: variant.varSKU,
       quantity: quantity,
-      price: product.price || 0, // You may need to add price to your product model
+      price: product.price || 0,
       subtotal: (product.price || 0) * quantity
     };
 
     onAddItem(item);
-    
-    // Reset selection after adding
+
     setSelectedVariant('');
     setQuantity(1);
   };

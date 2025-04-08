@@ -4,7 +4,6 @@ const { query } = require('../config/db');
 const jwt = require('jsonwebtoken');
 require('dotenv').config({path: '.env.admin'});
 
-// Authentication middleware (same as in your categories.js)
 const authMiddleware = async (req, res, next) => {
   const token = req.header('x-auth-token');
   if (!token) {

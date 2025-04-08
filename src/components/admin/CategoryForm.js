@@ -121,7 +121,6 @@ const CategoryForm = () => {
         });
       }
       
-      // Optional: redirect after a delay
       setTimeout(() => {
         navigate('/admin/categories');
       }, 2000);
