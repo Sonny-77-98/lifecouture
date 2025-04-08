@@ -95,13 +95,11 @@ const ProductForm = () => {
     fetchProduct();
   }, [id, isEditMode]);
   
-  // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
-  
-  // Handle category selection changes
+
   const handleCategoryChange = (catID) => {
     const selectedCategories = [...formData.selectedCategories];
     const index = selectedCategories.indexOf(catID);
@@ -150,15 +148,12 @@ const ProductForm = () => {
       let response;
       
       if (isEditMode) {
-        // Update existing product
         response = await axios.put(`/api/products/${id}`, productData);
         setSuccess('Product updated successfully');
       } else {
-        // Create new product
         response = await axios.post('/api/products', productData);
         setSuccess('Product created successfully');
-        
-        // Clear form after successful creation
+
         setFormData({
           prodTitle: '',
           prodDesc: '',
@@ -231,30 +226,6 @@ const ProductForm = () => {
                 required
               />
             </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="prodURL">URL Slug*</label>
-                <div className="url-input-group">
-                  <input
-                    type="text"
-                    id="prodURL"
-                    name="prodURL"
-                    value={formData.prodURL}
-                    onChange={handleChange}
-                    placeholder="product-url-slug"
-                    required
-                  />
-                  <button 
-                    type="button" 
-                    className="generate-slug-button" 
-                    onClick={generateSlug}
-                  >
-                    Generate
-                  </button>
-                </div>
-                <p className="field-help">Used in the product URL, e.g., /products/product-url-slug</p>
-              </div>
               
               <div className="form-group">
                 <label htmlFor="prodStat">Status*</label>
@@ -336,7 +307,6 @@ const ProductForm = () => {
               )}
             </div>
           </div>
-        </div>
         
         <div className="form-actions">
           <button 

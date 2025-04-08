@@ -100,6 +100,9 @@ const InventoryList = () => {
       <div className="list-header">
         <h2>Inventory Management</h2>
       </div>
+      <div className="back-to-dashboard">
+      <Link to="/admin/dashboard">← Back to Dashboard</Link>
+      </div> 
       
       {error && <div className="error-message">{error}</div>}
       
@@ -128,6 +131,7 @@ const InventoryList = () => {
           </div>
         </div>
       </div>
+      
       
       {filteredInventory.length === 0 ? (
         <div className="no-items-found">

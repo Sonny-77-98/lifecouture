@@ -10,6 +10,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalCategories: 0,
+    totalOrders: 0,
     lowStockCount: 0
   });
   const [loading, setLoading] = useState(true);
@@ -24,10 +25,14 @@ const Dashboard = () => {
         const categoriesRes = await axios.get('/api/categories');
 
         const lowStockRes = await axios.get('/api/inventory/low-stock');
+
+        const orderCount = await axios.get('/api/orders/count');
+      
         
         setStats({
-          totalProducts: productsRes.data.count || 0,
+          totalProducts: productsRes.data.length || 0,
           totalCategories: categoriesRes.data.length || 0,
+          totalOrders: orderCount.data.length || 0,
           lowStockCount: lowStockRes.data.length || 0
         });
         
@@ -39,7 +44,8 @@ const Dashboard = () => {
         setStats({
           totalProducts: 0,
           totalCategories: 0,
-          totalInventory: 0
+          totalOrders: 0,
+          lowStockCount: 0
         });
       }
     };
@@ -73,11 +79,18 @@ const Dashboard = () => {
               <p className="stat-value">{stats.totalCategories}</p>
               <Link to="/admin/categories" className="stat-link">Manage</Link>
             </div>
-          </div>
-          <div className="stat-card">
-            <h3>Inventory</h3>
-            <p className="stat-value">{stats.lowStockCount}</p>
-            <Link to="/admin/inventory" className="stat-link">Manage</Link>
+            
+            <div className="stat-card">
+              <h3>Orders</h3>
+              <p className="stat-value">{stats.totalOrders}</p>
+              <Link to="/admin/orders" className="stat-link">Manage</Link>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Low Stock Items</h3>
+              <p className="stat-value">{stats.lowStockCount}</p>
+              <Link to="/admin/inventory" className="stat-link">Manage</Link>
+            </div>
           </div>
           
           <div className="dashboard-content">
@@ -96,6 +109,21 @@ const Dashboard = () => {
                   </li>
                   <li>
                     <Link to="/admin/inventory">Manage Inventory</Link>
+                  </li>
+                  <li>
+                    <Link to="/admin/variants" className="admin-link">Manage Variants</Link>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="dashboard-menu">
+                <h3>Order Management</h3>
+                <ul>
+                  <li>
+                    <Link to="/admin/orders">View All Orders</Link>
+                  </li>
+                  <li>
+                    <Link to="/admin/orders/create">Create New Order</Link>
                   </li>
                 </ul>
               </div>
