@@ -10,20 +10,17 @@ const ProductList = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categories, setCategories] = useState([]);
-  
-  // Status options for filtering
+
   const statusOptions = useMemo(() => [
     'active',
     'inactive',
   ], []);
   
-  // Function to fetch data
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Build query parameters for filtering
+
       let url = '/api/products';
       const params = [];
       
@@ -40,12 +37,10 @@ const ProductList = () => {
       }
       
       console.log('Fetching products from:', url);
-      
-      // Fetch products
+
       const productsResponse = await axios.get(url);
       console.log('Products response:', productsResponse.data);
-      
-      // Ensure products is always an array
+
       const productsData = Array.isArray(productsResponse.data) 
         ? productsResponse.data 
         : [];
@@ -85,7 +80,6 @@ const ProductList = () => {
     }
   }, []);
   
-  // Filter products based on search term
   const filteredProducts = useMemo(() => {
     if (!Array.isArray(products)) return [];
     return products.filter(product => 
@@ -94,7 +88,6 @@ const ProductList = () => {
     );
   }, [products, searchTerm]);
   
-  // Function to get a placeholder image if product image is not available
   const getProductImage = useCallback((product) => {
     if (product.imageUrl) {
       return product.imageUrl;
@@ -102,7 +95,6 @@ const ProductList = () => {
     return "https://i.imgur.com/O4L5Wbf.jpeg";
   }, []);
   
-  // Show status instead of dropdown since the API endpoint is not working
   const renderStatus = useCallback((status) => {
     const statusClass = `status-badge status-${status || 'active'}`;
     const displayStatus = (status || 'active').charAt(0).toUpperCase() + (status || 'active').slice(1).replace('_', ' ');

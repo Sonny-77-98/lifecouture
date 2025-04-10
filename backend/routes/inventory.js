@@ -35,7 +35,6 @@ router.get('/low-stock', authMiddleware, async (req, res) => {
   }
 });
 
-// Update inventory quantity
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { newQuantity } = req.body;

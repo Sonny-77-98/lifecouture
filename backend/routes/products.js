@@ -165,6 +165,22 @@ router.get('/:id/categories', async (req, res) => {
   }
 });
 
+router.get('/:id/variants', async (req, res) => {
+  try {
+    const variants = await query(`
+      SELECT pv.*, i.invQty, pv.varPrice
+      FROM ProductVariants pv
+      LEFT JOIN Inventory i ON pv.varID = i.varID
+      WHERE pv.prodID = ?
+    `, [req.params.id]);
+    
+    res.json(variants);
+  } catch (error) {
+    console.error('Error fetching product variants:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ADMIN ROUTES - Protected by authentication middleware
 
 router.post('/', authMiddleware, async (req, res) => {

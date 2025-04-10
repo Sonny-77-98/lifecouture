@@ -11,6 +11,12 @@ import ProductForm from './components/admin/ProductForm';
 import CategoryList from './components/admin/CategoryList';
 import CategoryForm from './components/admin/CategoryForm';
 import InventoryList from './components/admin/InventoryList';
+import OrderList from './components/admin/OrderList';
+import OrderDetail from './components/admin/OrderDetail';
+import OrderForm from './components/admin/OrderForm';
+import VariantList from './components/admin/VariantList';
+import VariantForm from './components/admin/VariantForm';
+import OrderItemSelector from './components/admin/OrderItemSelector';
 
 // Storefront components
 import Cart from "./Cart";
@@ -82,19 +88,38 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<Navigate to="/admin/dashboard" />} />
             <Route path="/admin/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            
+            {/* Product Management Routes */}
             <Route path="/admin/products" element={<PrivateRoute><ProductList /></PrivateRoute>} />
             <Route path="/admin/products/add" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
             <Route path="/admin/products/edit/:id" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
+            
+            {/* Category Management Routes */}
             <Route path="/admin/categories" element={<PrivateRoute><CategoryList /></PrivateRoute>} />
             <Route path="/admin/categories/add" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
             <Route path="/admin/categories/edit/:id" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
+            
+            {/* Inventory Management Route */}
             <Route path="/admin/inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
+
+            {/*Variant Management Route*/}
+            <Route path="/admin/variants" element={<PrivateRoute><VariantList /></PrivateRoute>} />
+            <Route path="/admin/variants/add" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
+            <Route path="/admin/variants/edit/:id" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
+            
+            {/* Order Management Routes - New */}
+            <Route path="/admin/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
+            <Route path="/admin/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
+            <Route path="/admin/orders/create" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
+            <Route path="/admin/orders/edit/:id" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
+          
 
             {/* Storefront Routes */}
             <Route path="/" element={<Home productList={productList} loading={loading} error={error} addToCart={addToCart} />} />
             <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} />
             <Route path="/checkout" element={<Checkout cart={cart} setCart={setCart} />} />
             <Route path="/about" element={<About />} />
+
           </Routes>
 
           {/* Footer displayed only on Home and About pages */}
