@@ -242,35 +242,35 @@ const OrderDetail = () => {
         </div>
         
         <div className="summary-card">
-          <h3>Customer Information</h3>
+        <h3>Customer Information</h3>
           <div className="info-group">
             <div className="info-item">
               <span className="label">Name:</span>
-              <span>{order.usFname} {order.usLname}</span>
+              <span>{order.user ? `${order.user.usFname} ${order.user.usLname}` : 'N/A'}</span>
             </div>
             <div className="info-item">
               <span className="label">Email:</span>
-              <span>{order.usEmail}</span>
+              <span>{order.user ? order.user.usEmail : 'N/A'}</span>
             </div>
-            {order.usPNum && (
+            {order.user && order.user.usPNum && (
               <div className="info-item">
                 <span className="label">Phone:</span>
-                <span>{order.usPNum}</span>
+                <span>{order.user.usPNum}</span>
               </div>
             )}
           </div>
         </div>
         
-        {order.shippingAddress && (
+        {order.address && (
           <div className="summary-card">
             <h3>Shipping Address</h3>
             <div className="info-group">
               <div className="address-block">
-                <p>{order.shippingAddress.usAdStr}</p>
+                <p>{order.address.usAdStr}</p>
                 <p>
-                  {order.shippingAddress.usAdCity}, {order.shippingAddress.usAdState} {order.shippingAddress.usAdPCode}
+                  {order.address.usAdCity}, {order.address.usAdState} {order.address.usAdPCode}
                 </p>
-                <p>{order.shippingAddress.usAdCountry}</p>
+                <p>{order.address.usAdCountry}</p>
               </div>
             </div>
           </div>
