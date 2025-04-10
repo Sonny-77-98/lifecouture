@@ -238,6 +238,14 @@ const OrderDetail = () => {
               <span className="label">Total Amount:</span>
               <span className="order-total">{formatCurrency(order.orderTotalAmt)}</span>
             </div>
+            <div className="info-item">
+              <span className="label">Tax Rate:</span>
+              <span>{order.taxRate ? `${order.taxRate}%` : '7.25%'}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Shipping Cost:</span>
+              <span>{formatCurrency(order.shippingCost)}</span>
+            </div>
           </div>
         </div>
         

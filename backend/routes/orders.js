@@ -139,7 +139,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { items, userID, orderTotalAmt } = req.body;
+    const { items, userID, orderTotalAmt, taxRate, shippingCost, shippingAddressId } = req.body;
     
     if (!items || !items.length || !userID || !orderTotalAmt) {
       return res.status(400).json({ 
@@ -153,8 +153,8 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     const orderResult = await query(
-      'INSERT INTO Orders (orderStat, orderTotalAmt, orderCreatedAt, orderUpdatedAt, userID) VALUES (?, ?, NOW(), NOW(), ?)',
-      ['Pending', orderTotalAmt, userID]
+      'INSERT INTO Orders (orderStat, orderTotalAmt, orderCreatedAt, orderUpdatedAt, userID, taxRate, shippingCost) VALUES (?, ?, NOW(), NOW(), ?, ?, ?)',
+      ['Pending', orderTotalAmt, userID, taxRate || 8.25, shippingCost || 599]
     );
     
     const orderID = orderResult.insertId;
@@ -198,7 +198,7 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   let connection;
   try {
-    const { userID, orderStat, orderTotalAmt, items } = req.body;
+    const { userID, orderStat, orderTotalAmt, items, taxRate, shippingCost } = req.body;
     
     if (!userID || !orderStat || !orderTotalAmt || !items) {
       return res.status(400).json({ 
@@ -217,8 +217,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
     await connection.beginTransaction();
 
     await connection.execute(
-      'UPDATE Orders SET orderStat = ?, orderTotalAmt = ?, userID = ?, orderUpdatedAt = NOW() WHERE orderID = ?',
-      [orderStat, orderTotalAmt, userID, req.params.id]
+      'UPDATE Orders SET orderStat = ?, orderTotalAmt = ?, userID = ?, orderUpdatedAt = NOW(), taxRate = ?, shippingCost = ? WHERE orderID = ?',
+      [orderStat, orderTotalAmt, userID, taxRate, shippingCost, req.params.id]
     );
 
     await connection.execute('DELETE FROM OrderItems WHERE orderID = ?', [req.params.id]);
