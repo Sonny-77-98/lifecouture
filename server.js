@@ -1,5 +1,4 @@
-require('dotenv').config(); 
-
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -12,7 +11,7 @@ const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
 const DB_NAME = process.env.DB_NAME;
 const DB_PORT = process.env.DB_PORT || 3306;
-const DB_CONNECTION_LIMIT = process.env.DB_CONNECTION_LIMIT || 10; 
+const DB_CONNECTION_LIMIT = process.env.DB_CONNECTION_LIMIT || 10;
 
 // Middleware
 app.use(express.json());
@@ -33,35 +32,43 @@ const pool = mysql.createPool({
   connectionLimit: DB_CONNECTION_LIMIT,
 });
 
-// API Routes
+// Routes
+// Inventory Routes
 const inventoryRoutes = require('./backend/routes/inventory');
 app.use('/api/inventory', inventoryRoutes);
 
+// Authentication Routes
 const { router: authRouter } = require('./backend/routes/authentication');
 app.use('/api/auth', authRouter);
 
+// Category Routes
 const categoryRoutes = require('./backend/routes/categories');
 app.use('/api/categories', categoryRoutes);
 
+// Product Routes
 const productsRouter = require('./backend/routes/products');
 app.use('/api/products', productsRouter);
 
+// Order Routes
 const ordersRoutes = require('./backend/routes/orders');
 app.use('/api/orders', ordersRoutes);
 
+// User Routes
 const userRoutes = require('./backend/routes/users');
 app.use('/api/users', userRoutes);
 
+// Variant Routes
 const variantsRouter = require('./backend/routes/variants');
 app.use('/api/variants', variantsRouter);
 
-// Fetch products from the database
+// API Routes
+// Get products from the database
 app.get('/api/products', async (req, res) => {
   try {
     const [products] = await pool.query('SELECT * FROM Product');
     res.json(products);
   } catch (error) {
-    console.error("Error fetching products from DB:", error);
+    console.error('Error fetching products from DB:', error);
     res.status(500).json({ error: 'Failed to fetch products', details: error.message });
   }
 });
@@ -75,6 +82,7 @@ app.post('/api/cart', async (req, res) => {
     );
     res.json({ message: 'Item added to cart' });
   } catch (error) {
+    console.error('Error adding item to cart:', error);
     res.status(500).json({ error: 'Failed to add item to cart', details: error.message });
   }
 });
@@ -85,6 +93,7 @@ app.get('/api/cart/:userID', async (req, res) => {
     const [cart] = await pool.query('SELECT * FROM Cart WHERE userID = ?', [userID]);
     res.json(cart);
   } catch (error) {
+    console.error('Error fetching cart:', error);
     res.status(500).json({ error: 'Failed to fetch cart', details: error.message });
   }
 });
@@ -95,6 +104,7 @@ app.delete('/api/cart/:userID/:prodID', async (req, res) => {
     await pool.query('DELETE FROM Cart WHERE userID = ? AND prodID = ?', [userID, prodID]);
     res.json({ message: 'Item removed from cart' });
   } catch (error) {
+    console.error('Error removing item from cart:', error);
     res.status(500).json({ error: 'Failed to remove item from cart', details: error.message });
   }
 });
@@ -110,24 +120,20 @@ app.post('/api/checkout', async (req, res) => {
     }
 
     await pool.query('DELETE FROM Cart WHERE userID = ?', [userID]);
+
     res.json({ message: 'Order placed successfully', orderID });
   } catch (error) {
+    console.error('Error placing order:', error);
     res.status(500).json({ error: 'Failed to place order', details: error.message });
   }
 });
 
-app.use((err, req, res, next) => {
-  if (err instanceof URIError) {
-    console.error('URI Error:', err.message);
-    return res.status(400).send('Bad Request - Invalid URI');
-  }
-  next(err);
-});
-
+// Serve static files for production
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
