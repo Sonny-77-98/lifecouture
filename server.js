@@ -46,6 +46,15 @@ app.use('/api/categories', categoryRoutes);
 const productsRouter = require('./backend/routes/products');
 app.use('/api/products', productsRouter);
 
+const ordersRoutes = require('./backend/routes/orders');
+app.use('/api/orders', ordersRoutes);
+
+const userRoutes = require('./backend/routes/users');
+app.use('/api/users', userRoutes);
+
+const variantsRouter = require('./backend/routes/variants');
+app.use('/api/variants', variantsRouter);
+
 // Fetch products from the database
 app.get('/api/products', async (req, res) => {
   try {
@@ -118,7 +127,6 @@ app.use((err, req, res, next) => {
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

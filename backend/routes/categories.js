@@ -171,7 +171,6 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     if (existingCategory.length === 0) {
       return res.status(404).json({ message: 'Category not found' });
     }
-s
     const inUseCheck = await query(
       'SELECT COUNT(*) as count FROM ProductCategories WHERE catID = ?', 
       [req.params.id]

@@ -30,7 +30,6 @@ const ProductForm = () => {
     'inactive',
   ];
   
-  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -95,13 +94,11 @@ const ProductForm = () => {
     fetchProduct();
   }, [id, isEditMode]);
   
-  // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
-  
-  // Handle category selection changes
+
   const handleCategoryChange = (catID) => {
     const selectedCategories = [...formData.selectedCategories];
     const index = selectedCategories.indexOf(catID);
@@ -115,17 +112,6 @@ const ProductForm = () => {
     setFormData({ ...formData, selectedCategories });
   };
   
-  // Generate URL slug from title
-  const generateSlug = () => {
-    const slug = formData.prodTitle
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    
-    setFormData({ ...formData, prodURL: slug });
-  };
-  
   // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -134,7 +120,6 @@ const ProductForm = () => {
     setSuccess(null);
     
     try {
-      // Prepare product data for submission
       const productData = {
         prodTitle: formData.prodTitle,
         prodDesc: formData.prodDesc,
@@ -150,15 +135,12 @@ const ProductForm = () => {
       let response;
       
       if (isEditMode) {
-        // Update existing product
         response = await axios.put(`/api/products/${id}`, productData);
         setSuccess('Product updated successfully');
       } else {
-        // Create new product
         response = await axios.post('/api/products', productData);
         setSuccess('Product created successfully');
-        
-        // Clear form after successful creation
+
         setFormData({
           prodTitle: '',
           prodDesc: '',
@@ -169,11 +151,9 @@ const ProductForm = () => {
           selectedCategories: []
         });
       }
-      
-      // Redirect after a short delay
       setTimeout(() => {
         navigate('/admin/products');
-      }, 1500);
+      }, 2000);
       
     } catch (err) {
       console.error('Error saving product:', err);
@@ -231,30 +211,6 @@ const ProductForm = () => {
                 required
               />
             </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="prodURL">URL Slug*</label>
-                <div className="url-input-group">
-                  <input
-                    type="text"
-                    id="prodURL"
-                    name="prodURL"
-                    value={formData.prodURL}
-                    onChange={handleChange}
-                    placeholder="product-url-slug"
-                    required
-                  />
-                  <button 
-                    type="button" 
-                    className="generate-slug-button" 
-                    onClick={generateSlug}
-                  >
-                    Generate
-                  </button>
-                </div>
-                <p className="field-help">Used in the product URL, e.g., /products/product-url-slug</p>
-              </div>
               
               <div className="form-group">
                 <label htmlFor="prodStat">Status*</label>
@@ -336,7 +292,6 @@ const ProductForm = () => {
               )}
             </div>
           </div>
-        </div>
         
         <div className="form-actions">
           <button 
