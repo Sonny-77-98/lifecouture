@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -19,6 +19,8 @@ import VariantForm from './components/admin/VariantForm';
 import UserForm from './components/admin/UserForm';
 import UserList from './components/admin/UserList';
 import UserAddresses from './components/admin/UserAddresses';
+import ProductFilter from "./ProductFilter";
+
 
 // Storefront components
 import Cart from "./Cart";
@@ -33,8 +35,9 @@ function App() {
   const [cart, setCart] = React.useState(() => JSON.parse(localStorage.getItem("cart")) || []);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
@@ -69,13 +72,18 @@ function App() {
 
   const isAdminRoute = window.location.pathname.startsWith('/admin') || window.location.pathname === '/login';
 
+  // Filter products based on search query
+  const filteredProducts = productList.filter((product) => 
+    product.prodTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <AuthProvider>
       <Router>
         {!isAdminRoute && (
           <div className="navbar">
             <div className="logo">Life Couture</div>
-            <div className="nav-links">
+            <div className="nav-links-right">
               <Link to="/">Home</Link>
               <Link to="/cart">Cart ({cart.length})</Link>
               <Link to="/about">About</Link>
@@ -90,6 +98,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<Navigate to="/admin/dashboard" />} />
             <Route path="/admin/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            {/* Other Admin Routes */}
             
             {/* Product Management Routes */}
             <Route path="/admin/products" element={<PrivateRoute><ProductList /></PrivateRoute>} />
@@ -120,40 +129,67 @@ function App() {
             <Route path="/admin/users/edit/:id" element={<PrivateRoute><UserForm /></PrivateRoute>} />
             <Route path="/admin/users/create" element={<PrivateRoute><UserForm /></PrivateRoute>} />
             <Route path="/admin/users/:id/addresses" element={<PrivateRoute><UserAddresses /></PrivateRoute>} />
-            
-          
+
             {/* Storefront Routes */}
-            <Route path="/" element={<Home productList={productList} loading={loading} error={error} addToCart={addToCart} />} />
+            <Route path="/" element={<Home 
+              productList={filteredProducts} 
+              loading={loading} 
+              error={error} 
+              addToCart={addToCart} 
+              setSearchQuery={setSearchQuery} 
+              searchQuery={searchQuery} 
+            />} />
             <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} />
             <Route path="/checkout" element={<Checkout cart={cart} setCart={setCart} />} />
             <Route path="/about" element={<About />} />
-
+            <Route path="/filter" element={<ProductFilter />} />
           </Routes>
-
-          {/* Footer displayed only on Home and About pages */}
-          {(window.location.pathname === '/' || window.location.pathname === '/about') && (
-            <div className="footer">
-              <p>&copy; 2025 Life Couture. All rights reserved.</p>
-              <div className="contact-info">
-                <p>If you have any questions, feel free to reach out!</p>
-                <p>Email: <a href="mailto:support@lifecouture.com">support@lifecouture.com</a></p>
-                <p>Phone: (123) 456-7890</p>
-                <p>Address: 123 Fitness Lane, Workout City, WC 56789</p>
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* Footer logic */}
+        <Footer />
       </Router>
     </AuthProvider>
   );
 }
 
-const Home = ({ productList, loading, error, addToCart }) => (
+const Footer = () => (
+  <div className="footer">
+    <p>&copy; 2025 Life Couture. All rights reserved.</p>
+    <div className="contact-info">
+      <p>If you have any questions, feel free to reach out!</p>
+      <p>Email: <a href="mailto:support@lifecouture.com">support@lifecouture.com</a></p>
+      <p>Phone: (123) 456-7890</p>
+      <p>Address: 123 Fitness Lane, Workout City, WC 56789</p>
+    </div>
+  </div>
+);
+
+const Home = ({ productList, loading, error, addToCart, setSearchQuery, searchQuery }) => (
   <div>
     <div className="hero">
       <h1>Welcome to Life Couture</h1>
       <p>Living that city life!</p>
     </div>
+
+    {/* Filter Button Container */}
+    <div className="filter-button-container">
+      <Link to="/filter">
+        <button className="filter-btn">Filter Products</button>
+      </Link>
+    </div>
+
+    {/* Search Bar */}
+    <div className="search-bar-container">
+      <input
+        type="text"
+        className="search-bar"
+        placeholder="Search products..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+    </div>
+
     <div className="products">
       {loading ? (
         <div>Loading products...</div>
