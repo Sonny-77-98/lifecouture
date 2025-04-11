@@ -127,6 +127,18 @@ const Dashboard = () => {
                   </li>
                 </ul>
               </div>
+
+              <div className="dashboard-menu">
+                <h3>User Management</h3>
+                <ul>
+                  <li>
+                    <Link to="/admin/users">View All User</Link>
+                  </li>
+                  <li>
+                    <Link to="/admin/users/create">Create New User</Link>
+                  </li>
+                </ul>
+              </div>
               
               <div className="dashboard-menu">
                 <h3>Store Settings</h3>

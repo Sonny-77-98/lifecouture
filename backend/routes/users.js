@@ -197,47 +197,50 @@ router.get('/:userId/addresses',authMiddleware , async (req, res) => {
   }
 });
 
-  router.post('/:id/addresses', authMiddleware, async (req, res) => {
-    try {
-      const {
-        type, street, city, state, postalCode, country, isDefault
-      } = req.body;
-      
-      const existingUser = await query('SELECT usID FROM User WHERE usID = ?', [req.params.id]);
-      
-      if (existingUser.length === 0) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-      
-      const addressResult = await query(
-        `INSERT INTO UserAddresses 
-          (usAdType, usAdStr, usAdCity, usAdState, usAdPCode, usAdCountry, usAdIsDefault, usID) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          type || 'shipping',
-          street,
-          city,
-          state,
-          postalCode,
-          country || 'USA',
-          isDefault || false,
-        ]
-      );
-      
-      const addressId = addressResult.insertId;
-      
-      if (isDefault) {
-        await query('UPDATE User SET usAdID = ? WHERE usID = ?', [addressId, req.params.id]);
-      }
-      
-      res.status(201).json({
-        message: 'Address added successfully',
-        addressId
-      });
-    } catch (error) {
-      console.error('Error adding address:', error);
-      res.status(500).json({ error: error.message });
+router.post('/:id/addresses', authMiddleware, async (req, res) => {
+  try {
+    const {
+      type, street, city, state, postalCode, country, isDefault
+    } = req.body;
+
+    const userId = req.params.id;  
+    
+    const existingUser = await query('SELECT usID FROM User WHERE usID = ?', [userId]);
+    
+    if (existingUser.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  });
+    
+    const addressResult = await query(
+      `INSERT INTO UserAddresses 
+        (usAdType, usAdStr, usAdCity, usAdState, usAdPCode, usAdCountry, usAdIsDefault, usID) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        type || 'shipping',
+        street,
+        city,
+        state,
+        postalCode,
+        country || 'USA',
+        isDefault || false,
+        userId  // Use the ID from params
+      ]
+    );
+    
+    const addressId = addressResult.insertId;
+    
+    if (isDefault) {
+      await query('UPDATE User SET usAdID = ? WHERE usID = ?', [addressId, userId]);
+    }
+    
+    res.status(201).json({
+      message: 'Address added successfully',
+      addressId
+    });
+  } catch (error) {
+    console.error('Error adding address:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router;

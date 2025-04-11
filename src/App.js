@@ -16,7 +16,9 @@ import OrderDetail from './components/admin/OrderDetail';
 import OrderForm from './components/admin/OrderForm';
 import VariantList from './components/admin/VariantList';
 import VariantForm from './components/admin/VariantForm';
-import OrderItemSelector from './components/admin/OrderItemSelector';
+import UserForm from './components/admin/UserForm';
+import UserList from './components/admin/UserList';
+import UserAddresses from './components/admin/UserAddresses';
 
 // Storefront components
 import Cart from "./Cart";
@@ -107,13 +109,19 @@ function App() {
             <Route path="/admin/variants/add" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
             <Route path="/admin/variants/edit/:id" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
             
-            {/* Order Management Routes - New */}
+            {/* Order Management Routes  */}
             <Route path="/admin/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
             <Route path="/admin/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
             <Route path="/admin/orders/create" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
             <Route path="/admin/orders/edit/:id" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
-          
 
+            {/* User Management Routes */}
+            <Route path="/admin/users" element={<PrivateRoute><UserList /></PrivateRoute>} />
+            <Route path="/admin/users/edit/:id" element={<PrivateRoute><UserForm /></PrivateRoute>} />
+            <Route path="/admin/users/create" element={<PrivateRoute><UserForm /></PrivateRoute>} />
+            <Route path="/admin/users/:id/addresses" element={<PrivateRoute><UserAddresses /></PrivateRoute>} />
+            
+          
             {/* Storefront Routes */}
             <Route path="/" element={<Home productList={productList} loading={loading} error={error} addToCart={addToCart} />} />
             <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} />
@@ -160,7 +168,7 @@ const Home = ({ productList, loading, error, addToCart }) => (
               <img
                 src={product.prodURL}
                 alt={product.prodTitle}
-                onError={(e) => (e.target.src = "https://i.imgur.com/defaultImage.jpg")}
+                onError={(e) => (e.target.src = "https://imgur.com/gallery/crumble-s-daily-picture-3wYunFD#/t/cat")}
               />
             </div>
             <div>{product.prodTitle}</div>
