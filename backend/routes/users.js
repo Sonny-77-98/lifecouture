@@ -165,34 +165,35 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/:userId/addresses',authMiddleware , async (req, res) => {
+router.get('/:userId/addresses', authMiddleware, async (req, res) => {
   try {
-    console.log(`Getting address for user ID: ${req.params.userId}`);
-    const user = await query('SELECT usAdID FROM User WHERE usID = ?', [req.params.userId]);
-    
-    console.log(`User query result:`, user);
+    console.log(`Getting addresses for user ID: ${req.params.userId}`);
+
+    const user = await query('SELECT usID FROM User WHERE usID = ?', [req.params.userId]);
     
     if (!user.length) {
       console.log('User not found');
       return res.status(404).json({ message: 'User not found' });
     }
     
-    const addressId = user[0].usAdID;
-    console.log(`Looking for address with ID: ${addressId}`);
+    const userWithDefaultAddr = await query('SELECT usAdID FROM User WHERE usID = ?', [req.params.userId]);
+    const defaultAddressId = userWithDefaultAddr[0].usAdID;
+    const addresses = await query(`
+      SELECT a.*, 
+             (a.usAdID = ?) as usAdIsDefault
+      FROM UserAddresses a 
+      WHERE a.usID = ?
+      ORDER BY usAdIsDefault DESC, usAdID ASC
+    `, [defaultAddressId, req.params.userId]);
     
-    const address = await query('SELECT * FROM UserAddresses WHERE usAdID = ?', [addressId]);
-    
-    console.log(`Address query result:`, address);
-    
-    if (!address.length) {
-      console.log('Address not found');
-      return res.status(404).json({ message: 'Address not found' });
+    if (!addresses.length) {
+      console.log('No addresses found for user');
+      return res.json([]); 
     }
     
-    console.log(`Returning address:`, address);
-    res.json(address);
+    res.json(addresses);
   } catch (error) {
-    console.error('Error fetching user address:', error);
+    console.error('Error fetching user addresses:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -223,7 +224,7 @@ router.post('/:id/addresses', authMiddleware, async (req, res) => {
         postalCode,
         country || 'USA',
         isDefault || false,
-        userId  // Use the ID from params
+        userId
       ]
     );
     
@@ -243,4 +244,98 @@ router.post('/:id/addresses', authMiddleware, async (req, res) => {
   }
 });
 
+router.delete('/:userId/addresses/:addressId', authMiddleware, async (req, res) => {
+  try {
+    const { userId, addressId } = req.params;
+
+    const addressCheck = await query(
+      'SELECT usAdID FROM UserAddresses WHERE usAdID = ? AND usID = ?', 
+      [addressId, userId]
+    );
+    
+    if (addressCheck.length === 0) {
+      return res.status(404).json({ message: 'Address not found or does not belong to this user' });
+    }
+    const userCheck = await query('SELECT usAdID FROM User WHERE usID = ?', [userId]);
+    
+    if (userCheck[0].usAdID == addressId) {
+      const otherAddresses = await query(
+        'SELECT usAdID FROM UserAddresses WHERE usID = ? AND usAdID != ? LIMIT 1',
+        [userId, addressId]
+      );
+      
+      if (otherAddresses.length > 0) {
+        await query('UPDATE User SET usAdID = ? WHERE usID = ?', [otherAddresses[0].usAdID, userId]);
+      } else {
+        await query('UPDATE User SET usAdID = NULL WHERE usID = ?', [userId]);
+      }
+    }
+    
+    await query('DELETE FROM UserAddresses WHERE usAdID = ?', [addressId]);
+    
+    res.json({ message: 'Address deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting address:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch('/:userId/addresses/:addressId/default', authMiddleware, async (req, res) => {
+  try {
+    const { userId, addressId } = req.params;
+
+    const addressCheck = await query(
+      'SELECT usAdID FROM UserAddresses WHERE usAdID = ? AND usID = ?', 
+      [addressId, userId]
+    );
+    
+    if (addressCheck.length === 0) {
+      return res.status(404).json({ message: 'Address not found or does not belong to this user' });
+    }
+
+    await query('UPDATE User SET usAdID = ? WHERE usID = ?', [addressId, userId]);
+    
+    res.json({ message: 'Default address updated successfully' });
+  } catch (error) {
+    console.error('Error setting default address:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/:userId/addresses/:addressId', authMiddleware, async (req, res) => {
+  try {
+    const { userId, addressId } = req.params;
+
+    const addressCheck = await query(
+      'SELECT usAdID FROM UserAddresses WHERE usAdID = ? AND usID = ?', 
+      [addressId, userId]
+    );
+    
+    if (addressCheck.length === 0) {
+      return res.status(404).json({ message: 'Address not found or does not belong to this user' });
+    }
+
+    const userCheck = await query('SELECT usAdID FROM User WHERE usID = ?', [userId]);
+    
+    if (userCheck[0].usAdID == addressId) {
+      const otherAddresses = await query(
+        'SELECT usAdID FROM UserAddresses WHERE usID = ? AND usAdID != ? LIMIT 1',
+        [userId, addressId]
+      );
+      
+      if (otherAddresses.length > 0) {
+        await query('UPDATE User SET usAdID = ? WHERE usID = ?', [otherAddresses[0].usAdID, userId]);
+      } else {
+        await query('UPDATE User SET usAdID = NULL WHERE usID = ?', [userId]);
+      }
+    }
+
+    await query('DELETE FROM UserAddresses WHERE usAdID = ?', [addressId]);
+    
+    res.json({ message: 'Address deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting address:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 module.exports = router;
