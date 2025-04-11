@@ -386,11 +386,11 @@ const OrderForm = () => {
     
     try {
       setLoading(true);
-
+  
       const formattedItems = formData.items.map(item => ({
         varID: item.variant,
         quantity: item.quantity,
-        price: dollarsToCents(item.price), // Convert dollars to cents for API
+        price: dollarsToCents(item.price),
         updateInventory: !isEditMode 
       }));
       
@@ -399,9 +399,9 @@ const OrderForm = () => {
         response = await axios.put(`/api/orders/${id}`, {
           userID: formData.customer,
           orderStat: formData.status,
-          orderTotalAmt: dollarsToCents(calculateTotal()), // Convert to cents
+          orderTotalAmt: dollarsToCents(calculateTotal()),
           taxRate: taxRate,
-          shippingCost: dollarsToCents(shippingCost), // Convert to cents
+          shippingCost: dollarsToCents(shippingCost),
           shippingAddressId: formData.shippingAddressId,
           items: formattedItems
         });
@@ -410,10 +410,10 @@ const OrderForm = () => {
       } else {
         response = await axios.post('/api/orders', {
           userID: formData.customer,
-          orderTotalAmt: dollarsToCents(calculateTotal()), // Convert to cents
+          orderTotalAmt: dollarsToCents(calculateTotal()),
           orderStat: formData.status,
           taxRate: taxRate,
-          shippingCost: dollarsToCents(shippingCost), // Convert to cents
+          shippingCost: dollarsToCents(shippingCost),
           shippingAddressId: formData.shippingAddressId,
           items: formattedItems
         });
