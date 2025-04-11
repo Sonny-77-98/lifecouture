@@ -13,26 +13,37 @@ function ProductFilter({ addToCart }) {
         // Fetch categories
         const categoriesRes = await fetch(`${API_URL}/api/categories`);
         const categoriesData = await categoriesRes.json();
-        console.log("Fetched Categories:", categoriesData); // Log the fetched categories
         setCategories(categoriesData);
 
-        // Fetch products
-        const productsRes = await fetch(`${API_URL}/api/products`);
-        const productsData = await productsRes.json();
-        console.log("Fetched Products:", productsData); // Log the fetched products
-        setProducts(productsData);
+        // Fetch products based on the selected category
+        fetchProducts(selectedCategory); // Fetch products when category changes
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     };
 
     fetchCategoriesAndProducts();
-  }, []);
+  }, [selectedCategory]); // Re-fetch when selectedCategory changes
 
-  // Filter products based on selected category
-  const filteredProducts = selectedCategory
-    ? products.filter((product) => product.category === selectedCategory)
-    : products;
+  const fetchProducts = async (categoryId) => {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+
+      let productsRes;
+      if (categoryId) {
+        // Fetch products filtered by selected category
+        productsRes = await fetch(`${API_URL}/api/products?category=${categoryId}`);
+      } else {
+        // Fetch all products
+        productsRes = await fetch(`${API_URL}/api/products`);
+      }
+
+      const productsData = await productsRes.json();
+      setProducts(productsData);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
   return (
     <div className="container">
@@ -52,10 +63,10 @@ function ProductFilter({ addToCart }) {
       </select>
 
       <div className="products">
-        {filteredProducts.length === 0 ? (
-          <div>No products found for this category.</div> // Show message if no products match the selected category
+        {products.length === 0 ? (
+          <div>No products found for this category.</div>
         ) : (
-          filteredProducts.map((product) => (
+          products.map((product) => (
             <div className="product-card" key={product.prodID}>
               <div className="product-image">
                 <img src={product.prodURL} alt={product.prodTitle} />
