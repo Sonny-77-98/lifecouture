@@ -16,8 +16,11 @@ import OrderDetail from './components/admin/OrderDetail';
 import OrderForm from './components/admin/OrderForm';
 import VariantList from './components/admin/VariantList';
 import VariantForm from './components/admin/VariantForm';
-import OrderItemSelector from './components/admin/OrderItemSelector';
+import UserForm from './components/admin/UserForm';
+import UserList from './components/admin/UserList';
+import UserAddresses from './components/admin/UserAddresses';
 import ProductFilter from "./ProductFilter";
+
 
 // Storefront components
 import Cart from "./Cart";
@@ -97,6 +100,36 @@ function App() {
             <Route path="/admin/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             {/* Other Admin Routes */}
             
+            {/* Product Management Routes */}
+            <Route path="/admin/products" element={<PrivateRoute><ProductList /></PrivateRoute>} />
+            <Route path="/admin/products/add" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
+            <Route path="/admin/products/edit/:id" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
+            
+            {/* Category Management Routes */}
+            <Route path="/admin/categories" element={<PrivateRoute><CategoryList /></PrivateRoute>} />
+            <Route path="/admin/categories/add" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
+            <Route path="/admin/categories/edit/:id" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
+            
+            {/* Inventory Management Route */}
+            <Route path="/admin/inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
+
+            {/*Variant Management Route*/}
+            <Route path="/admin/variants" element={<PrivateRoute><VariantList /></PrivateRoute>} />
+            <Route path="/admin/variants/add" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
+            <Route path="/admin/variants/edit/:id" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
+            
+            {/* Order Management Routes  */}
+            <Route path="/admin/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
+            <Route path="/admin/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
+            <Route path="/admin/orders/create" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
+            <Route path="/admin/orders/edit/:id" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
+
+            {/* User Management Routes */}
+            <Route path="/admin/users" element={<PrivateRoute><UserList /></PrivateRoute>} />
+            <Route path="/admin/users/edit/:id" element={<PrivateRoute><UserForm /></PrivateRoute>} />
+            <Route path="/admin/users/create" element={<PrivateRoute><UserForm /></PrivateRoute>} />
+            <Route path="/admin/users/:id/addresses" element={<PrivateRoute><UserAddresses /></PrivateRoute>} />
+
             {/* Storefront Routes */}
             <Route path="/" element={<Home 
               productList={filteredProducts} 
@@ -171,7 +204,7 @@ const Home = ({ productList, loading, error, addToCart, setSearchQuery, searchQu
               <img
                 src={product.prodURL}
                 alt={product.prodTitle}
-                onError={(e) => (e.target.src = "https://i.imgur.com/defaultImage.jpg")}
+                onError={(e) => (e.target.src = "https://imgur.com/gallery/crumble-s-daily-picture-3wYunFD#/t/cat")}
               />
             </div>
             <div>{product.prodTitle}</div>

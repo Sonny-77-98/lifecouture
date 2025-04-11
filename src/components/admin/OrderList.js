@@ -103,8 +103,7 @@ const OrderList = () => {
         { status: newStatus },
         { headers: { 'x-auth-token': token } }
       );
-      
-      // Update the order status in the local state
+
       setOrders(orders.map(order => 
         order.orderID === orderId 
           ? { ...order, orderStat: newStatus } 
@@ -121,7 +120,40 @@ const OrderList = () => {
       }
     }
   };
-  
+  const handleDeleteOrder = async (orderId) => {
+    if (!isAuthenticated) {
+      setAuthError(true);
+      return;
+    }
+    
+    if (window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      try {
+        setError(null);
+        
+        const token = getAuthToken();
+        if (!token) {
+          setAuthError(true);
+          return;
+        }
+        
+        await axios.delete(`/api/orders/${orderId}`, {
+          headers: { 'x-auth-token': token }
+        });
+
+        setOrders(orders.filter(order => order.orderID !== orderId));
+        
+      } catch (err) {
+        console.error('Error deleting order:', err);
+        
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          setAuthError(true);
+        } else {
+          setError('Failed to delete order');
+        }
+      }
+    }
+  };
+
   const handlePageChange = (newPage) => {
     fetchOrders(newPage, pagination.limit, filterStatus);
   };
@@ -262,6 +294,13 @@ const OrderList = () => {
                     <Link to={`/admin/orders/edit/${order.orderID}`} className="edit-button">
                       Edit
                     </Link>
+                    {/* Add the Delete button */}
+                    <button 
+                      onClick={() => handleDeleteOrder(order.orderID)}
+                      className="delete-button"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}

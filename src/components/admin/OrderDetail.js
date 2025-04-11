@@ -122,6 +122,7 @@ const OrderDetail = () => {
       }
     }
   };
+  
   const formatPrice = (price) => {
     if (price === undefined || price === null) {
       return '$0.00';
@@ -303,9 +304,14 @@ const OrderDetail = () => {
                 <td>
                   <div className="product-info">
                     <span className="product-name">{item.prodTitle}</span>
+                    {item.prodDesc && (
+                      <span className="product-description">{item.prodDesc}</span>
+                    )}
                   </div>
                 </td>
-                <td>{item.varSKU}</td>
+                <td>
+                  {item.varSKU || item.sku || 'N/A'}
+                </td>
                 <td>{formatCurrency(item.prodUPrice)}</td>
                 <td>{item.orderVarQty}</td>
                 <td>{formatCurrency(item.prodUPrice * item.orderVarQty)}</td>
@@ -327,5 +333,7 @@ const OrderDetail = () => {
     </div>
   );
 };
+
+
 
 export default OrderDetail;

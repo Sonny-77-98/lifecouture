@@ -1,0 +1,137 @@
+/* src/style/UserAddresses.css */
+.user-addresses-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+  }
+  
+  .page-header h2 {
+    margin: 0;
+    color: #333;
+  }
+  
+  .back-link {
+    color: #2196f3;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  
+  .back-link:hover {
+    color: #0d8aee;
+    text-decoration: underline;
+  }
+  
+  .error-message {
+    padding: 12px 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    background-color: #ffebee;
+    color: #c62828;
+    border-left: 4px solid #c62828;
+  }
+  
+  .auth-error-message {
+    background-color: #ffeeee;
+    border-left: 4px solid #e53935;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+  
+  .auth-error-message p {
+    color: #d32f2f;
+    margin-bottom: 15px;
+  }
+  
+  .login-link {
+    display: inline-block;
+    background-color: #2196f3;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s;
+  }
+  
+  .login-link:hover {
+    background-color: #1976d2;
+    text-decoration: none;
+  }
+  
+  .addresses-actions {
+    margin-bottom: 20px;
+  }
+  
+  .add-address-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .add-address-button:hover {
+    background-color: #388E3C;
+  }
+  
+  .no-addresses {
+    text-align: center;
+    padding: 40px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    color: #6c757d;
+    margin-bottom: 20px;
+  }
+  
+  .addresses-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .address-card {
+    position: relative;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    border: 1px solid #dee2e6;
+    overflow: hidden;
+  }
+  
+  .default-address {
+    border: 2px solid #4CAF50;
+  }
+  
+  .default-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .address-type {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+  
