@@ -20,7 +20,10 @@ const pool = mysql.createPool({
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+ origin: '*',  //in development, REMOVE after done
+ credentials:true
+}));
 app.use(express.static(path.join(__dirname, 'build')));
 
 // Routes Setup
@@ -52,11 +55,9 @@ app.post('/api/checkout', async (req, res) => {
       totalAmount += price * quantity;
     }
 
-    // Start transaction
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // Always create new user
     const [firstName, lastName] = name.split(' ');
     const [userInsert] = await connection.query(
       'INSERT INTO User (usFname, usLname, usEmail, usPNum, usAdID, usPassword, usRole) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -65,7 +66,6 @@ app.post('/api/checkout', async (req, res) => {
 
     const userID = userInsert.insertId;
 
-    // Create order
     const [orderResult] = await connection.query(
       'INSERT INTO Orders (userID, orderTotalAmt, orderSTAT, orderCreatedAt, orderUpdatedAt) VALUES (?, ?, "Pending", NOW(), NOW())',
       [userID, totalAmount]
@@ -149,12 +149,27 @@ app.delete('/api/cart/:userID/:prodID', async (req, res) => {
   }
 });
 
-// Fallback for production
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
+/*app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
+});*/
+
+/*To find ip address, and expose for connection */
+const os = require('os');
+const networkInterfaces = os.networkInterfaces();
+
+let ipAddress;
+Object.keys(networkInterfaces).forEach(interfaceName => {
+  networkInterfaces[interfaceName].forEach(interface => {
+    if (!interface.internal && interface.family === 'IPv4') {
+      ipAddress = interface.address;
+    }
+  });
+});
+
+app.listen(3000, ipAddress || '127.0.0.1', () => {
+  console.log(`Server running at http://${ipAddress || '127.0.0.1'}:3000`);
 });

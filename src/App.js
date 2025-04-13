@@ -41,9 +41,13 @@ function App() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+        const API_URL = process.env.REACT_APP_API_URL || '';;
         
-        const response = await fetch(`${API_URL}/api/products`);
+        const url = API_URL ? `${API_URL}/api/products` : '/api/products';
+
+        console.log(`Fetching products from: ${url}`);
+
+        const response = await fetch(url);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch products: ${response.status}`);
