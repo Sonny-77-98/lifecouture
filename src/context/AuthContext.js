@@ -4,9 +4,7 @@ import axios from 'axios';
 
 export const AuthContext = createContext();
 
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://localhost:3000'
-  : '';
+const API_URL = process.env.REACT_APP_API_URL || '';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -49,7 +47,11 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Attempting login with:', { username, password });
       setError(null);
-      const res = await axios.post(`${API_URL}/api/auth/login`, { username, password });
+      
+      // Use the API_URL from environment variable
+      const loginUrl = `/api/auth/login`;
+      const res = await axios.post(loginUrl, { username, password });
+      
       console.log('Login response:', res.data);
       
       localStorage.setItem('token', res.data.token);
