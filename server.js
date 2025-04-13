@@ -21,8 +21,10 @@ const pool = mysql.createPool({
 // Middleware
 app.use(express.json());
 app.use(cors({
- origin: '*',  //in development, REMOVE after done
- credentials:true
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+  credentials: true
 }));
 app.use(express.static(path.join(__dirname, 'build')));
 
