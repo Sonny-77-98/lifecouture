@@ -1,373 +1,443 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware } = require('./authentication');
-const pool = require('../config/db');
+const { query } = require('../config/db');
+const jwt = require('jsonwebtoken');
+require('dotenv').config({path: '.env.admin'});
 
-router.get('/products', async (req, res) => {
+// Authentication middleware - verify token
+const authMiddleware = async (req, res, next) => {
+  const token = req.header('x-auth-token');
+
+  if (!token) {
+    return res.status(401).json({ message: 'No token, authorization denied' });
+  }
+  
   try {
-    let query = `
-      SELECT p.*, 
-        GROUP_CONCAT(DISTINCT c.catID) as categoryIds,
-        GROUP_CONCAT(DISTINCT c.catName) as categoryNames
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await query('SELECT * FROM admin_users WHERE id = ? AND role = ?', [decoded.id, 'admin']);
+    
+    if (user.length === 0) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(401).json({ message: 'Token is not valid' });
+  }
+};
+
+// PUBLIC ROUTES
+
+router.get('/', async (req, res) => {
+  try {
+    let sql = `
+      SELECT p.prodID, p.prodTitle, p.prodDesc, p.prodURL, p.prodStat, 
+             GROUP_CONCAT(DISTINCT c.catName) as categoryNames,
+             GROUP_CONCAT(DISTINCT pc.catID) as categoryIds
       FROM Product p
       LEFT JOIN ProductCategories pc ON p.prodID = pc.prodID
       LEFT JOIN Categories c ON pc.catID = c.catID
     `;
     
-    const queryParams = [];
-
+    const params = [];
+    const whereConditions = [];
+    
     if (req.query.category) {
-      query += ` 
-        WHERE p.prodID IN (
-          SELECT DISTINCT pc.prodID 
-          FROM ProductCategories pc 
-          WHERE pc.catID = ?
+      whereConditions.push(`
+        p.prodID IN (
+          SELECT prodID FROM ProductCategories 
+          WHERE catID = ?
         )
-      `;
-      queryParams.push(req.query.category);
+      `);
+      params.push(req.query.category);
     }
- 
+    
     if (req.query.status) {
-      query += queryParams.length ? ' AND ' : ' WHERE ';
-      query += 'p.prodStat = ?';
-      queryParams.push(req.query.status);
+      whereConditions.push('p.prodStat = ?');
+      params.push(req.query.status);
     }
     
-    query += ' GROUP BY p.prodID';
-    
-    const [rows] = await pool.query(query, queryParams);
+    if (whereConditions.length > 0) {
+      sql += ' WHERE ' + whereConditions.join(' AND ');
+    }
 
-    const productsWithCategories = rows.map(product => {
-      const categoryIds = product.categoryIds ? product.categoryIds.split(',').map(id => parseInt(id)) : [];
-      const categoryNames = product.categoryNames ? product.categoryNames.split(',') : [];
+    sql += ' GROUP BY p.prodID, p.prodTitle, p.prodDesc, p.prodURL, p.prodStat';
+ 
+    sql += ' ORDER BY p.prodID DESC';
+    
+    const products = await query(sql, params);
+
+    const transformedProducts = await Promise.all(products.map(async (product) => {
+      const images = await query('SELECT * FROM ProductImages WHERE prodID = ? LIMIT 1', [product.prodID]);
+  
+      if (product.categoryIds) {
+        product.categories = product.categoryIds.split(',').map(id => parseInt(id));
+        product.categoryList = product.categoryNames ? product.categoryNames.split(',') : [];
+      } else {
+        product.categories = [];
+        product.categoryList = [];
+      }
       
-      const categories = categoryIds.map((id, index) => ({
-        catID: id,
-        catName: categoryNames[index] || ''
-      }));
+      if (images.length > 0) {
+        product.imageUrl = images[0].imgURL;
+        product.imageAlt = images[0].imgAlt;
+      }
 
       delete product.categoryIds;
       delete product.categoryNames;
       
-      return {
-        ...product,
-        categories
-      };
-    });
-    
-    res.json(productsWithCategories);
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    res.status(500).json({ message: 'Error fetching products' });
-  }
-});
-
-router.get('/products/:id', async (req, res) => {
-  try {
-    const [productRows] = await pool.query(
-      `SELECT p.*, 
-        GROUP_CONCAT(DISTINCT c.catID) as categoryIds,
-        GROUP_CONCAT(DISTINCT c.catName) as categoryNames
-      FROM Product p
-      LEFT JOIN ProductCategories pc ON p.prodID = pc.prodID
-      LEFT JOIN Categories c ON pc.catID = c.catID
-      WHERE p.prodID = ?
-      GROUP BY p.prodID`,
-      [req.params.id]
-    );
-    
-    if (productRows.length === 0) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-    
-    const product = productRows[0];
-
-    const categoryIds = product.categoryIds ? product.categoryIds.split(',').map(id => parseInt(id)) : [];
-    const categoryNames = product.categoryNames ? product.categoryNames.split(',') : [];
-    
-    const categories = categoryIds.map((id, index) => ({
-      catID: id,
-      catName: categoryNames[index] || ''
+      return product;
     }));
     
-    delete product.categoryIds;
-    delete product.categoryNames;
-
-    const [imagesRows] = await pool.query(
-      `SELECT pi.*, pv.varSKU 
-       FROM ProductImages pi
-       LEFT JOIN ProductVariants pv ON pi.varID = pv.varID
-       WHERE pi.prodID = ?`,
-      [req.params.id]
-    );
-
-    res.json({
-      ...product,
-      categories,
-      images: imagesRows
-    });
+    res.json(transformedProducts);
   } catch (error) {
-    console.error('Error fetching product:', error);
-    res.status(500).json({ message: 'Error fetching product' });
+    console.error('Error fetching products:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/products', authMiddleware, async (req, res) => {
-  const { prodTitle, prodDesc, prodStat, prodURL, categories, images } = req.body;
-
-  if (!prodTitle || !prodDesc) {
-    return res.status(400).json({ message: 'Product title and description are required' });
-  }
-  
-  let connection;
-  
+router.get('/count', async (req, res) => {
   try {
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
-    const [productResult] = await connection.query(
-      'INSERT INTO Product (prodTitle, prodDesc, prodURL, prodStat) VALUES (?, ?, ?, ?)',
-      [prodTitle, prodDesc, prodURL, prodStat || 'active']
-    );
-    
-    const prodID = productResult.insertId;
-
-    if (categories && categories.length > 0) {
-      const categoryValues = categories.map(catID => [prodID, catID]);
-      
-      await connection.query(
-        'INSERT INTO ProductCategories (prodID, catID) VALUES ?',
-        [categoryValues]
-      );
-    }
-
-    if (images && images.length > 0) {
-      for (const image of images) {
-        await connection.query(
-          `INSERT INTO ProductImages (imgURL, imgAlt, imgWidth, imgHeight, prodID, varID) 
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [
-            image.imgURL, 
-            image.imgAlt || prodTitle, 
-            image.imgWidth || null, 
-            image.imgHeight || null, 
-            prodID, 
-            image.varID || null
-          ]
-        );
-      }
-    }
-    
-    await connection.commit();
-
-    const [productRows] = await connection.query(
-      `SELECT * FROM Product WHERE prodID = ?`,
-      [prodID]
-    );
-    
-    res.status(201).json({
-      ...productRows[0],
-      message: 'Product created successfully'
-    });
+    const result = await query('SELECT COUNT(*) as count FROM Product');
+    res.json({ count: result[0].count });
   } catch (error) {
-    if (connection) await connection.rollback();
-    
-    console.error('Error creating product:', error);
-    res.status(500).json({ message: 'Error creating product' });
-  } finally {
-    if (connection) connection.release();
+    console.error('Error counting products:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-router.put('/products/:id', authMiddleware , async (req, res) => {
-  const prodID = req.params.id;
-  const { prodTitle, prodDesc, prodStat, prodURL, categories, images } = req.body;
 
-  if (!prodTitle || !prodDesc) {
-    return res.status(400).json({ message: 'Product title and description are required' });
-  }
-  
-  let connection;
-  
+router.get('/:id', async (req, res) => {
   try {
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
-
-    const [checkResult] = await connection.query(
-      'SELECT * FROM Product WHERE prodID = ?',
-      [prodID]
-    );
+    const product = await query('SELECT * FROM Product WHERE prodID = ?', [req.params.id]);
     
-    if (checkResult.length === 0) {
-      await connection.rollback();
-      return res.status(404).json({ message: 'Product not found' });
-    }
-    await connection.query(
-      'UPDATE Product SET prodTitle = ?, prodDesc = ?, prodURL = ?, prodStat = ? WHERE prodID = ?',
-      [prodTitle, prodDesc, prodURL, prodStat, prodID]
-    );
-
-    if (categories) {
-      await connection.query(
-        'DELETE FROM ProductCategories WHERE prodID = ?',
-        [prodID]
-      );
-      if (categories.length > 0) {
-        const categoryValues = categories.map(catID => [prodID, catID]);
-        
-        await connection.query(
-          'INSERT INTO ProductCategories (prodID, catID) VALUES ?',
-          [categoryValues]
-        );
-      }
-    }
-
-    if (images) {
-      for (const image of images) {
-        if (image.imgID) {
-          await connection.query(
-            `UPDATE ProductImages 
-             SET imgURL = ?, imgAlt = ?, imgWidth = ?, imgHeight = ?, varID = ? 
-             WHERE imgID = ? AND prodID = ?`,
-            [
-              image.imgURL, 
-              image.imgAlt || prodTitle, 
-              image.imgWidth || null, 
-              image.imgHeight || null, 
-              image.varID || null,
-              image.imgID,
-              prodID
-            ]
-          );
-        } else {
-          await connection.query(
-            `INSERT INTO ProductImages (imgURL, imgAlt, imgWidth, imgHeight, prodID, varID) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-              image.imgURL, 
-              image.imgAlt || prodTitle, 
-              image.imgWidth || null, 
-              image.imgHeight || null, 
-              prodID, 
-              image.varID || null
-            ]
-          );
-        }
-      }
-
-      const currentImageIds = images
-        .filter(img => img.imgID)
-        .map(img => img.imgID);
-      if (currentImageIds.length > 0) {
-        await connection.query(
-          `DELETE FROM ProductImages 
-           WHERE prodID = ? AND imgID NOT IN (?)`,
-          [prodID, currentImageIds]
-        );
-      } else if (images.length === 0) {
-        await connection.query(
-          'DELETE FROM ProductImages WHERE prodID = ?',
-          [prodID]
-        );
-      }
-    }
-    
-    await connection.commit();
-    
-    res.json({ 
-      prodID,
-      message: 'Product updated successfully' 
-    });
-  } catch (error) {
-    if (connection) await connection.rollback();
-    
-    console.error('Error updating product:', error);
-    res.status(500).json({ message: 'Error updating product' });
-  } finally {
-    if (connection) connection.release();
-  }
-});
-
-router.delete('/products/:id', authMiddleware, async (req, res) => {
-  const prodID = req.params.id;
-  
-  let connection;
-  
-  try {
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
-
-    await connection.query(
-      'DELETE FROM ProductImages WHERE prodID = ?',
-      [prodID]
-    );
-
-    await connection.query(
-      'DELETE FROM ProductCategories WHERE prodID = ?',
-      [prodID]
-    );
-    
-    await connection.query(
-      'DELETE FROM ProductVariants WHERE prodID = ?',
-      [prodID]
-    );
-    const [result] = await connection.query(
-      'DELETE FROM Product WHERE prodID = ?',
-      [prodID]
-    );
-    
-    await connection.commit();
-    
-    if (result.affectedRows === 0) {
+    if (product.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
     
-    res.json({ message: 'Product deleted successfully' });
-  } catch (error) {
-    if (connection) await connection.rollback();
+    const productData = product[0];
+
+    const categories = await query(`
+      SELECT c.* 
+      FROM Categories c
+      JOIN ProductCategories pc ON c.catID = pc.catID
+      WHERE pc.prodID = ?
+    `, [req.params.id]);
+
     
-    console.error('Error deleting product:', error);
-    res.status(500).json({ message: 'Error deleting product' });
-  } finally {
-    if (connection) connection.release();
+    const attributes = await query(`
+      SELECT pav.*, pa.attName 
+      FROM VariantAttributesValues pav
+      JOIN ProductAttributes pa ON pav.attID = pa.attID
+      JOIN ProductVariants pv ON pav.varID = pv.varID
+      WHERE pv.prodID = ?
+    `, [req.params.id]);
+
+    const images = await query('SELECT * FROM ProductImages WHERE prodID = ?', [req.params.id]);
+    
+    productData.categories = categories;
+    productData.attributes = attributes;
+    productData.images = images;
+    
+    res.json(productData);
+  } catch (error) {
+    console.error('Error fetching product details:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-router.get('/products/:id/variants', async (req, res) => {
+router.get('/:id/categories', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT pv.*, vav.attValue, pa.attName
-       FROM ProductVariants pv
-       LEFT JOIN VariantAttributesValues vav ON pv.varID = vav.varID
-       LEFT JOIN ProductAttributes pa ON vav.attID = pa.attID
-       WHERE pv.prodID = ?`,
-      [req.params.id]
-    );
-    const variantsMap = new Map();
+    const sql = `
+      SELECT c.* 
+      FROM Categories c
+      JOIN ProductCategories pc ON c.catID = pc.catID
+      WHERE pc.prodID = ?
+    `;
     
-    rows.forEach(row => {
-      const { varID, prodID, varSKU, varBCode, varPrice, attName, attValue } = row;
-      
-      if (!variantsMap.has(varID)) {
-        variantsMap.set(varID, {
-          varID,
-          prodID,
-          varSKU,
-          varBCode,
-          varPrice,
-          attributes: {}
-        });
-      }
-      
-      if (attName && attValue) {
-        variantsMap.get(varID).attributes[attName] = attValue;
-      }
-    });
+    const categories = await query(sql, [req.params.id]);
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching product categories:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/:id/variants', async (req, res) => {
+  try {
+    const variants = await query(`
+      SELECT pv.*, i.invQty, pv.varPrice
+      FROM ProductVariants pv
+      LEFT JOIN Inventory i ON pv.varID = i.varID
+      WHERE pv.prodID = ?
+    `, [req.params.id]);
     
-    const variants = Array.from(variantsMap.values());
     res.json(variants);
   } catch (error) {
     console.error('Error fetching product variants:', error);
-    res.status(500).json({ message: 'Error fetching product variants' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ADMIN ROUTES - Protected by authentication middleware
+
+router.post('/', authMiddleware, async (req, res) => {
+  let connection;
+  try {
+    let categories = req.body.categories;
+    let attributes = req.body.attributes;
+    
+    if (typeof categories === 'string') {
+      try {
+        categories = JSON.parse(categories);
+      } catch (e) {
+        categories = [];
+      }
+    }
+    
+    if (typeof attributes === 'string') {
+      try {
+        attributes = JSON.parse(attributes);
+      } catch (e) {
+        attributes = {};
+      }
+    }
+    
+    const { prodTitle, prodDesc, prodURL, prodStat, imageUrl, imageAlt } = req.body;
+    
+    if (!prodTitle || !prodDesc) {
+      return res.status(400).json({ message: 'Product title and description are required' });
+    }
+    const { pool } = require('../config/db');
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const [productResult] = await connection.execute(
+      'INSERT INTO Product (prodTitle, prodDesc, prodURL, prodStat) VALUES (?, ?, ?, ?)',
+        [prodTitle, prodDesc, prodURL, prodStat]
+    );
+    
+    const productId = productResult.insertId;
+
+    if (imageUrl) {
+      await connection.execute(
+        'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
+        [imageUrl, imageAlt || prodTitle, productId]
+      );
+    }
+
+    if (categories && categories.length > 0) {
+      for (const catID of categories) {
+        await connection.execute(
+          'INSERT INTO ProductCategories (prodID, catID) VALUES (?, ?)',
+          [productId, catID]
+        );
+      }
+    }
+
+    if (attributes && Object.keys(attributes).length > 0) {
+      for (const [attID, value] of Object.entries(attributes)) {
+        if (value) {
+          await connection.execute(
+            'INSERT INTO ProductAttributes (prodID, attID, value) VALUES (?, ?, ?)',
+            [productId, attID, value]
+          );
+        }
+      }
+    }
+
+    await connection.commit();
+    
+    res.status(201).json({
+      message: 'Product created successfully',
+      productId: productId
+    });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    
+    console.error('Error creating product:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+});
+
+router.put('/:id', authMiddleware, async (req, res) => {
+  let connection;
+  try {
+    let categories = req.body.categories;
+    let attributes = req.body.attributes;
+    
+    if (typeof categories === 'string') {
+      try {
+        categories = JSON.parse(categories);
+      } catch (e) {
+        categories = [];
+      }
+    }
+    
+    if (typeof attributes === 'string') {
+      try {
+        attributes = JSON.parse(attributes);
+      } catch (e) {
+        attributes = {};
+      }
+    }
+    
+    const { prodTitle, prodDesc, prodURL, prodStat, imageUrl, imageAlt } = req.body;
+    const productId = req.params.id;
+
+    if (!prodTitle || !prodDesc) {
+      return res.status(400).json({ message: 'Product title and description are required' });
+    }
+
+    const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
+    
+    if (product.length === 0) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const { pool } = require('../config/db');
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    await connection.execute(
+      'UPDATE Product SET prodTitle = ?, prodDesc = ?, prodURL = ?, prodStat = ? WHERE prodID = ?',
+      [prodTitle, prodDesc, prodURL || prodTitle.toLowerCase().replace(/\s+/g, '-'), prodStat || 'active', productId]
+    );
+
+    if (imageUrl) {
+      const images = await connection.execute('SELECT * FROM ProductImages WHERE prodID = ?', [productId]);
+      
+      if (images[0].length > 0) {
+
+        await connection.execute(
+          'UPDATE ProductImages SET imgURL = ? WHERE prodID = ? AND imgID = ?',
+          [imageUrl, productId, images[0][0].imgID]
+        );
+      } else {
+        await connection.execute(
+          'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
+          [imageUrl, imageAlt || prodTitle, productId]
+        );
+      }
+    }
+    
+    await connection.commit();
+    
+    res.json({
+      message: 'Product updated successfully',
+      productId: productId
+    });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    
+    console.error('Error updating product:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+});
+
+router.patch('/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const productId = req.params.id;
+
+    const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
+    
+    if (product.length === 0) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    await query(
+      'UPDATE Product SET prodStat = ? WHERE prodID = ?',
+      [status, productId]
+    );
+    
+    res.json({ message: 'Product status updated successfully' });
+  } catch (error) {
+    console.error('Error updating product status:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+router.delete('/:id', authMiddleware, async (req, res) => {
+  let connection;
+  try {
+    const productId = req.params.id;
+
+    const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
+    
+    if (product.length === 0) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    connection = await require('../config/db').pool.getConnection();
+    await connection.beginTransaction();
+
+    const [variants] = await connection.execute(
+      'SELECT varID FROM ProductVariants WHERE prodID = ?', 
+      [productId]
+    );
+
+    if (variants && variants.length > 0) {
+      for (const variant of variants) {
+        await connection.execute(
+          'DELETE FROM VariantAttributesValues WHERE varID = ?',
+          [variant.varID]
+        );
+        
+        await connection.execute(
+          'DELETE FROM Inventory WHERE varID = ?',
+          [variant.varID]
+        );
+      }
+      
+      await connection.execute(
+        'DELETE FROM ProductVariants WHERE prodID = ?',
+        [productId]
+      );
+    }
+    
+    await connection.execute(
+      'DELETE FROM ProductCategories WHERE prodID = ?', 
+      [productId]
+    );
+    
+    await connection.execute(
+      'DELETE FROM ProductImages WHERE prodID = ?', 
+      [productId]
+    );
+    
+    await connection.execute(
+      'DELETE FROM Product WHERE prodID = ?', 
+      [productId]
+    );
+    
+    await connection.commit();
+    
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    
+    console.error('Error deleting product:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 });
 
