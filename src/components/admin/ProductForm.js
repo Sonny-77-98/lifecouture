@@ -13,12 +13,18 @@ const ProductForm = () => {
     prodDesc: '',
     prodStat: 'active',
     prodURL: '',
-    imageUrl: '',
-    imageAlt: '',
     selectedCategories: []
   });
   
+  const [productImages, setProductImages] = useState([]);
+  const [newImage, setNewImage] = useState({ 
+    imgURL: '', 
+    imgAlt: '', 
+    variantID: '' 
+  });
+  
   const [categories, setCategories] = useState([]);
+  const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -66,22 +72,29 @@ const ProductForm = () => {
             : [];
         }
         
-        let imageUrl = '';
-        let imageAlt = '';
-        if (product.images && product.images.length > 0) {
-          imageUrl = product.images[0].imgURL;
-          imageAlt = product.images[0].imgAlt;
-        }
-        
         setFormData({
           prodTitle: product.prodTitle || '',
           prodDesc: product.prodDesc || '',
           prodStat: product.prodStat || 'active',
           prodURL: product.prodURL || '',
-          imageUrl: imageUrl,
-          imageAlt: imageAlt,
           selectedCategories: productCategories
         });
+        
+        // Fetch product variants
+        try {
+          const variantResponse = await axios.get(`/api/products/${id}/variants`);
+          setVariants(Array.isArray(variantResponse.data) ? variantResponse.data : []);
+        } catch (err) {
+          console.error('Error fetching variants:', err);
+        }
+        
+        // Fetch product images
+        try {
+          const imageResponse = await axios.get(`/api/products/${id}/images`);
+          setProductImages(Array.isArray(imageResponse.data) ? imageResponse.data : []);
+        } catch (err) {
+          console.error('Error fetching product images:', err);
+        }
         
         setLoading(false);
       } catch (err) {
@@ -111,6 +124,32 @@ const ProductForm = () => {
     
     setFormData({ ...formData, selectedCategories });
   };
+
+  const handleImageChange = (e) => {
+    const { name, value } = e.target;
+    setNewImage(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const addImage = () => {
+    if (!newImage.imgURL.trim()) {
+      alert('Please enter an image URL');
+      return;
+    }
+    
+    const imageToAdd = {
+      ...newImage,
+      tempId: Date.now() // Use a temporary ID for new images
+    };
+    
+    setProductImages([...productImages, imageToAdd]);
+    setNewImage({ imgURL: '', imgAlt: '', variantID: '' });
+  };
+  
+  const removeImage = (index) => {
+    const updatedImages = [...productImages];
+    updatedImages.splice(index, 1);
+    setProductImages(updatedImages);
+  };
   
   // Form submission
   const handleSubmit = async (e) => {
@@ -125,9 +164,13 @@ const ProductForm = () => {
         prodDesc: formData.prodDesc,
         prodStat: formData.prodStat,
         prodURL: formData.prodURL,
-        imageUrl: formData.imageUrl,
-        imageAlt: formData.imageAlt || formData.prodTitle,
-        categories: formData.selectedCategories
+        categories: formData.selectedCategories,
+        images: productImages.map(image => ({
+          imgID: image.imgID || null,
+          imgURL: image.imgURL,
+          imgAlt: image.imgAlt || formData.prodTitle,
+          varID: image.variantID || null
+        }))
       };
       
       console.log('Submitting product data:', productData);
@@ -146,11 +189,12 @@ const ProductForm = () => {
           prodDesc: '',
           prodStat: 'active',
           prodURL: '',
-          imageUrl: '',
-          imageAlt: '',
           selectedCategories: []
         });
+        
+        setProductImages([]);
       }
+      
       setTimeout(() => {
         navigate('/admin/products');
       }, 2000);
@@ -212,56 +256,45 @@ const ProductForm = () => {
               />
             </div>
               
-              <div className="form-group">
-                <label htmlFor="prodStat">Status*</label>
-                <select
-                  id="prodStat"
-                  name="prodStat"
-                  value={formData.prodStat}
-                  onChange={handleChange}
-                  required
-                >
-                  {statusOptions.map(status => (
-                    <option key={status} value={status}>
-                      {status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="form-group">
+              <label htmlFor="prodStat">Status*</label>
+              <select
+                id="prodStat"
+                name="prodStat"
+                value={formData.prodStat}
+                onChange={handleChange}
+                required
+              >
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>
+                    {status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1)}
+                  </option>
+                ))}
+              </select>
             </div>
             
             <div className="form-group">
-              <label htmlFor="imageUrl">Image URL</label>
+              <label htmlFor="prodURL">Thumbnail URL*</label>
               <input
                 type="text"
-                id="imageUrl"
-                name="imageUrl"
-                value={formData.imageUrl}
+                id="prodURL"
+                name="prodURL"
+                value={formData.prodURL}
                 onChange={handleChange}
-                placeholder="Enter image URL"
+                placeholder="Enter main thumbnail URL"
+                required
               />
+              <p className="field-help">This will be used as the main product thumbnail in listings</p>
             </div>
             
-            <div className="form-group">
-              <label htmlFor="imageAlt">Image Alt Text</label>
-              <input
-                type="text"
-                id="imageAlt"
-                name="imageAlt"
-                value={formData.imageAlt}
-                onChange={handleChange}
-                placeholder="Enter image alt text"
-              />
-            </div>
-            
-            {formData.imageUrl && (
+            {formData.prodURL && (
               <div className="image-preview">
-                <h4>Image Preview</h4>
+                <h4>Thumbnail Preview</h4>
                 <img 
-                  src={formData.imageUrl} 
-                  alt={formData.imageAlt || formData.prodTitle}
+                  src={formData.prodURL} 
+                  alt={formData.prodTitle}
                   className="preview-image"
-                  onError={(e) => {e.target.src = "https://i.imgur.com/defaultImage.jpg"}}
+                  onError={(e) => {e.target.src = "https://i.imgur.com/O4L5Wbf.jpeg"}}
                 />
               </div>
             )}
@@ -292,6 +325,95 @@ const ProductForm = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Product Images Section */}
+        <div className="product-images-section">
+          <h3>Product Images</h3>
+          
+          <div className="image-grid">
+            {productImages.map((image, index) => (
+              <div key={image.imgID || image.tempId} className="image-item">
+                <div className="image-preview">
+                  <img 
+                    src={image.imgURL} 
+                    alt={image.imgAlt || "Product image"} 
+                    onError={(e) => {e.target.src = "https://i.imgur.com/O4L5Wbf.jpeg"}}
+                  />
+                </div>
+                <div className="image-details">
+                  <p className="image-alt">{image.imgAlt || "No alt text"}</p>
+                  <p className="image-variant">
+                    Variant: {
+                      variants.find(v => v.varID === image.varID)?.varSKU || 
+                      "Not assigned to variant"
+                    }
+                  </p>
+                  <button 
+                    type="button" 
+                    className="remove-image-btn"
+                    onClick={() => removeImage(index)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="add-image-form">
+            <h4>Add New Image</h4>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="imgURL">Image URL*</label>
+                <input
+                  type="text"
+                  id="imgURL"
+                  name="imgURL"
+                  value={newImage.imgURL}
+                  onChange={handleImageChange}
+                  placeholder="Enter image URL"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="imgAlt">Alt Text</label>
+                <input
+                  type="text"
+                  id="imgAlt"
+                  name="imgAlt"
+                  value={newImage.imgAlt}
+                  onChange={handleImageChange}
+                  placeholder="Enter image alt text"
+                />
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="variantID">Associate with Variant</label>
+              <select
+                id="variantID"
+                name="variantID"
+                value={newImage.variantID}
+                onChange={handleImageChange}
+              >
+                <option value="">Not associated with a variant</option>
+                {variants.map(variant => (
+                  <option key={variant.varID} value={variant.varID}>
+                    {variant.varSKU || `Variant ${variant.varID}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <button 
+              type="button" 
+              className="add-image-button"
+              onClick={addImage}
+            >
+              Add Image
+            </button>
+          </div>
+        </div>
         
         <div className="form-actions">
           <button 

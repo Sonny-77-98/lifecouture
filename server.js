@@ -36,14 +36,13 @@ app.use('/api/products', require('./backend/routes/products'));
 app.use('/api/orders', require('./backend/routes/orders'));
 app.use('/api/users', require('./backend/routes/users'));
 app.use('/api/variants', require('./backend/routes/variants'));
+app.use('/api', require('./backend/routes/productImages'));
 
-// Checkout process
 app.post('/api/checkout', async (req, res) => {
   const { items, name, email, phone } = req.body;
 
   let connection;
   try {
-    // Calculate totalAmount
     let totalAmount = 0;
     for (const item of items) {
       const [variant] = await pool.query(
