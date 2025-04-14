@@ -1,3 +1,5 @@
+// src/App.js
+
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -19,117 +21,105 @@ import VariantForm from './components/admin/VariantForm';
 import UserForm from './components/admin/UserForm';
 import UserList from './components/admin/UserList';
 import UserAddresses from './components/admin/UserAddresses';
-import ProductFilter from "./ProductFilter";
-
+import ProductFilter from './ProductFilter';
 
 // Storefront components
-import Cart from "./Cart";
-import Checkout from "./Checkout";
-import About from "./About";
+import Cart from './Cart';
+import Checkout from './Checkout';
+import About from './About';
+
+// New Breadcrumb component
+import Breadcrumb from './components/Breadcrumb';
 
 // Styles
 import './style/App.css';
 
 function App() {
-  const [productList, setProductList] = React.useState([]);
-  const [cart, setCart] = React.useState(() => JSON.parse(localStorage.getItem("cart")) || []);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [productList, setProductList] = useState([]);
+  const [cart, setCart] = useState(() => JSON.parse(localStorage.getItem('cart')) || []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-        
+
         const response = await fetch(`${API_URL}/api/products`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch products: ${response.status}`);
         }
-        
+
         const data = await response.json();
         setProductList(data);
       } catch (error) {
         setError(error.message);
-        console.error("Product fetch error details:", error);
+        console.error('Product fetch error details:', error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchProducts();
   }, []);
 
-  React.useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
 
   const addToCart = (product) => {
     setCart((prevCart) => [...prevCart, product]);
   };
 
-  const isAdminRoute = window.location.pathname.startsWith('/admin') || window.location.pathname === '/login';
+  const isAdminRoute = window.location.pathname.startsWith('/Admin') || window.location.pathname === '/Login';
 
   // Filter products based on search query
-  const filteredProducts = productList.filter((product) => 
+  const filteredProducts = productList.filter((product) =>
     product.prodTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <AuthProvider>
       <Router>
+        {/* Navbar for non-admin routes */}
         {!isAdminRoute && (
           <div className="navbar">
             <div className="logo">Life Couture</div>
             <div className="nav-links-right">
               <Link to="/">Home</Link>
-              <Link to="/cart">Cart ({cart.length})</Link>
-              <Link to="/about">About</Link>
-              <Link to="/admin">Admin</Link>
+              <Link to="/Cart">Cart ({cart.length})</Link>
+              <Link to="/About">About</Link>
+              <Link to="/Admin">Admin</Link>
             </div>
           </div>
         )}
 
-        <div className={isAdminRoute ? "app" : "container"}>
+        <div className={isAdminRoute ? 'app' : 'container'}>
+          {/* Breadcrumb component */}
+          {!isAdminRoute && <Breadcrumb />}
+
           <Routes>
             {/* Admin Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<Navigate to="/admin/dashboard" />} />
-            <Route path="/admin/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            {/* Other Admin Routes */}
+            <Route path="/Login" element={<Login />} />
+            <Route path="/Admin" element={<Navigate to="/admin/dashboard" />} />
+            <Route path="/Admin/Dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             
             {/* Product Management Routes */}
-            <Route path="/admin/products" element={<PrivateRoute><ProductList /></PrivateRoute>} />
-            <Route path="/admin/products/add" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
-            <Route path="/admin/products/edit/:id" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
+            <Route path="/Admin/Products" element={<PrivateRoute><ProductList /></PrivateRoute>} />
+            <Route path="/Admin/Products/Add" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
+            <Route path="/Admin/Products/Edit/:id" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
             
             {/* Category Management Routes */}
-            <Route path="/admin/categories" element={<PrivateRoute><CategoryList /></PrivateRoute>} />
-            <Route path="/admin/categories/add" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
-            <Route path="/admin/categories/edit/:id" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
+            <Route path="/Admin/Categories" element={<PrivateRoute><CategoryList /></PrivateRoute>} />
+            <Route path="/Admin/Categories/Add" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
+            <Route path="/Admin/Categories/Edit/:id" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
             
             {/* Inventory Management Route */}
-            <Route path="/admin/inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
-
-            {/*Variant Management Route*/}
-            <Route path="/admin/variants" element={<PrivateRoute><VariantList /></PrivateRoute>} />
-            <Route path="/admin/variants/add" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
-            <Route path="/admin/variants/edit/:id" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
+            <Route path="/Admin/Inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
             
-            {/* Order Management Routes  */}
-            <Route path="/admin/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
-            <Route path="/admin/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
-            <Route path="/admin/orders/create" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
-            <Route path="/admin/orders/edit/:id" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
-
-            {/* User Management Routes */}
-            <Route path="/admin/users" element={<PrivateRoute><UserList /></PrivateRoute>} />
-            <Route path="/admin/users/edit/:id" element={<PrivateRoute><UserForm /></PrivateRoute>} />
-            <Route path="/admin/users/create" element={<PrivateRoute><UserForm /></PrivateRoute>} />
-            <Route path="/admin/users/:id/addresses" element={<PrivateRoute><UserAddresses /></PrivateRoute>} />
-
             {/* Storefront Routes */}
             <Route path="/" element={<Home 
               productList={filteredProducts} 
@@ -139,14 +129,14 @@ function App() {
               setSearchQuery={setSearchQuery} 
               searchQuery={searchQuery} 
             />} />
-            <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} />
-            <Route path="/checkout" element={<Checkout cart={cart} setCart={setCart} />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/filter" element={<ProductFilter />} />
+            <Route path="/Cart" element={<Cart cart={cart} setCart={setCart} />} />
+            <Route path="/Checkout" element={<Checkout cart={cart} setCart={setCart} />} />
+            <Route path="/About" element={<About />} />
+            <Route path="/ProductFilter" element={<ProductFilter addToCart={addToCart} />} />
           </Routes>
         </div>
 
-        {/* Footer logic */}
+        {/* Footer */}
         <Footer />
       </Router>
     </AuthProvider>
@@ -172,14 +162,12 @@ const Home = ({ productList, loading, error, addToCart, setSearchQuery, searchQu
       <p>Living that city life!</p>
     </div>
 
-    {/* Filter Button Container */}
     <div className="filter-button-container">
-      <Link to="/filter">
+      <Link to="/ProductFilter">
         <button className="filter-btn">Filter Products</button>
       </Link>
     </div>
 
-    {/* Search Bar */}
     <div className="search-bar-container">
       <input
         type="text"
