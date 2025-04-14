@@ -50,7 +50,6 @@ const ProductForm = () => {
     fetchCategories();
   }, []);
   
-  // Load product data if in edit mode
   useEffect(() => {
     const fetchProduct = async () => {
       if (!isEditMode) return;
@@ -58,19 +57,27 @@ const ProductForm = () => {
       try {
         setLoading(true);
         setError(null);
+        console.log("Edit mode detected, fetching product with ID:", id);
         
         const response = await axios.get(`/api/products/${id}`);
+        console.log("Product data received:", response.data);
         const product = response.data;
         
         console.log('Product data:', product);
         
-        // Set product categories
+        // Set product images after product is defined
+        if (product.images && Array.isArray(product.images)) {
+          setProductImages(product.images);
+        }
+        
         let productCategories = [];
         if (product.categories) {
-          productCategories = Array.isArray(product.categories) 
-            ? product.categories.map(cat => cat.catID)
+          productCategories = Array.isArray(product.categories)
+            ? product.categories.map(cat => Number(cat.catID)) // Convert to numbers
             : [];
         }
+        console.log("Categories from API:", product.categories);
+        console.log("Extracted category IDs:", productCategories);
         
         setFormData({
           prodTitle: product.prodTitle || '',
@@ -80,20 +87,11 @@ const ProductForm = () => {
           selectedCategories: productCategories
         });
         
-        // Fetch product variants
         try {
           const variantResponse = await axios.get(`/api/products/${id}/variants`);
           setVariants(Array.isArray(variantResponse.data) ? variantResponse.data : []);
-        } catch (err) {
-          console.error('Error fetching variants:', err);
-        }
-        
-        // Fetch product images
-        try {
-          const imageResponse = await axios.get(`/api/products/${id}/images`);
-          setProductImages(Array.isArray(imageResponse.data) ? imageResponse.data : []);
-        } catch (err) {
-          console.error('Error fetching product images:', err);
+        } catch (varErr) {
+          console.error('Error fetching variants:', varErr);
         }
         
         setLoading(false);
@@ -106,6 +104,10 @@ const ProductForm = () => {
     
     fetchProduct();
   }, [id, isEditMode]);
+
+  useEffect(() => {
+    console.log("Form data updated:", formData);
+  }, [formData]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -113,11 +115,12 @@ const ProductForm = () => {
   };
 
   const handleCategoryChange = (catID) => {
+    const numericCatID = Number(catID);
     const selectedCategories = [...formData.selectedCategories];
-    const index = selectedCategories.indexOf(catID);
+    const index = selectedCategories.findIndex(id => Number(id) === numericCatID);
     
     if (index === -1) {
-      selectedCategories.push(catID);
+      selectedCategories.push(numericCatID);
     } else {
       selectedCategories.splice(index, 1);
     }
@@ -138,7 +141,7 @@ const ProductForm = () => {
     
     const imageToAdd = {
       ...newImage,
-      tempId: Date.now() // Use a temporary ID for new images
+      tempId: Date.now()
     };
     
     setProductImages([...productImages, imageToAdd]);
@@ -312,7 +315,7 @@ const ProductForm = () => {
                       <input
                         type="checkbox"
                         id={`cat-${category.catID}`}
-                        checked={formData.selectedCategories.includes(category.catID)}
+                        checked={formData.selectedCategories.some(id => Number(id) === Number(category.catID))}
                         onChange={() => handleCategoryChange(category.catID)}
                       />
                       <label htmlFor={`cat-${category.catID}`}>{category.catName}</label>
