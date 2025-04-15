@@ -20,15 +20,30 @@ const ProductForm = () => {
   const [newImage, setNewImage] = useState({ 
     imgURL: '', 
     imgAlt: '', 
-    variantID: '' 
+    varID: '' | null  
+  });
+  
+  // State for variant management
+  const [showVariantForm, setShowVariantForm] = useState(false);
+  const [variants, setVariants] = useState([]);
+  const [newVariant, setNewVariant] = useState({
+    varSKU: '',
+    varBCode: '',
+    varPrice: '83.54',
+    size: '',
+    color: '',
+    quantity: '10'
   });
   
   const [categories, setCategories] = useState([]);
-  const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Standard size and color options
+  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'One Size'];
+  const colorOptions = ['Black', 'White', 'Gray', 'Navy', 'Red', 'Blue', 'Green'];
 
   // Status options
   const statusOptions = [
@@ -130,28 +145,130 @@ const ProductForm = () => {
 
   const handleImageChange = (e) => {
     const { name, value } = e.target;
-    setNewImage(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'varID') {
+      console.log(`Variant selection changed to: ${value === '' ? 'NONE/NULL' : value}`);
+      const varID = value === '' ? null : value;
+      setNewImage(prev => ({ ...prev, varID }));
+    } else {
+      setNewImage(prev => ({ ...prev, [name]: value }));
+    }
   };
   
-  const addImage = () => {
+  const addImage = async () => {
     if (!newImage.imgURL.trim()) {
       alert('Please enter an image URL');
       return;
     }
+
+    console.log('Adding image with data:', {
+      imgURL: newImage.imgURL,
+      imgAlt: newImage.imgAlt,
+      varID: newImage.varID === '' ? 'EMPTY STRING' : newImage.varID
+    });
     
-    const imageToAdd = {
-      ...newImage,
-      tempId: Date.now()
-    };
+    try {
+      if (isEditMode && id) {
+        const response = await axios.post(`/api/products/${id}/images`, {
+          imgURL: newImage.imgURL,
+          imgAlt: newImage.imgAlt,
+          varID: newImage.varID
+        });
+
+        setProductImages([...productImages, response.data]);
+      } else {
+        const imageToAdd = {
+          ...newImage,
+          tempId: Date.now()
+        };
+        
+        setProductImages([...productImages, imageToAdd]);
+      }
+      setNewImage({ 
+        imgURL: '', 
+        imgAlt: '', 
+        varID: null
+      });
+    } catch (error) {
+      console.error('Error adding image:', error);
+      alert('Failed to add image: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const removeImage = async (index) => {
+    const imageToRemove = productImages[index];
     
-    setProductImages([...productImages, imageToAdd]);
-    setNewImage({ imgURL: '', imgAlt: '', variantID: '' });
+    try {
+      if (isEditMode && imageToRemove.imgID) {
+        await axios.delete(`/api/products/images/${imageToRemove.imgID}`);
+      }
+      const updatedImages = [...productImages];
+      updatedImages.splice(index, 1);
+      setProductImages(updatedImages);
+    } catch (error) {
+      console.error('Error removing image:', error);
+      alert('Failed to remove image: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+
+  const handleVariantChange = (e) => {
+    const { name, value } = e.target;
+    setNewVariant(prev => ({ ...prev, [name]: value }));
   };
   
-  const removeImage = (index) => {
-    const updatedImages = [...productImages];
-    updatedImages.splice(index, 1);
-    setProductImages(updatedImages);
+  const generateSKU = () => {
+    if (!formData.prodTitle) {
+      alert('Please enter a product title first');
+      return;
+    }
+    
+    const productPrefix = formData.prodTitle
+      .slice(0, 3)
+      .toUpperCase();
+    
+    const size = newVariant.size || 'OS';
+    const color = newVariant.color ? newVariant.color.slice(0, 3).toUpperCase() : 'STD';
+    
+    const sku = `${productPrefix}-${size}-${color}`;
+    setNewVariant(prev => ({ ...prev, varSKU: sku }));
+  };
+  
+  const addVariant = () => {
+    if (!newVariant.varSKU.trim()) {
+      alert('Please enter a SKU for this variant');
+      return;
+    }
+    
+    if (!newVariant.varPrice) {
+      alert('Please enter a price for this variant');
+      return;
+    }
+    
+    const variantToAdd = {
+      ...newVariant,
+      tempId: Date.now(),
+      attributes: [
+        { name: 'Size', value: newVariant.size },
+        { name: 'Color', value: newVariant.color }
+      ]
+    };
+    
+    setVariants([...variants, variantToAdd]);
+    setNewVariant({
+      varSKU: '',
+      varBCode: '',
+      varPrice: '83.54',
+      size: '',
+      color: '',
+      quantity: '10'
+    });
+  };
+  
+  const removeVariant = (index) => {
+    const updatedVariants = [...variants];
+    updatedVariants.splice(index, 1);
+    setVariants(updatedVariants);
   };
   
   // Form submission
@@ -172,7 +289,17 @@ const ProductForm = () => {
           imgID: image.imgID || null,
           imgURL: image.imgURL,
           imgAlt: image.imgAlt || formData.prodTitle,
-          varID: image.variantID || null
+          varID: image.varID || null
+        })),
+        variants: variants.map(variant => ({
+          varSKU: variant.varSKU,
+          varBCode: variant.varBCode,
+          varPrice: parseFloat(variant.varPrice),
+          quantity: parseInt(variant.quantity),
+          attributes: [
+            { attID: 1, attValue: variant.size },
+            { attID: 2, attValue: variant.color }
+          ]
         }))
       };
       
@@ -196,6 +323,7 @@ const ProductForm = () => {
         });
         
         setProductImages([]);
+        setVariants([]);
       }
       
       setTimeout(() => {
@@ -330,6 +458,169 @@ const ProductForm = () => {
           </div>
         </div>
 
+        {/* Variant Management Section */}
+        <div className="variants-section">
+          <div className="section-header">
+            <h3>Product Variants</h3>
+            <button 
+              type="button" 
+              className="toggle-button"
+              onClick={() => setShowVariantForm(!showVariantForm)}
+            >
+              {showVariantForm ? 'Hide Variant Form' : 'Add New Variant'}
+            </button>
+          </div>
+          
+          {showVariantForm && (
+            <div className="variant-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="varSKU">SKU*</label>
+                  <div className="input-with-button">
+                    <input
+                      type="text"
+                      id="varSKU"
+                      name="varSKU"
+                      value={newVariant.varSKU}
+                      onChange={handleVariantChange}
+                      placeholder="e.g., ELT-S-BLK"
+                    />
+                    <button 
+                      type="button" 
+                      className="generate-button"
+                      onClick={generateSKU}
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="varBCode">Barcode</label>
+                  <input
+                    type="text"
+                    id="varBCode"
+                    name="varBCode"
+                    value={newVariant.varBCode}
+                    onChange={handleVariantChange}
+                    placeholder="Enter barcode (optional)"
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="size">Size*</label>
+                  <select
+                    id="size"
+                    name="size"
+                    value={newVariant.size}
+                    onChange={handleVariantChange}
+                  >
+                    <option value="">Select Size</option>
+                    {sizeOptions.map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="color">Color*</label>
+                  <select
+                    id="color"
+                    name="color"
+                    value={newVariant.color}
+                    onChange={handleVariantChange}
+                  >
+                    <option value="">Select Color</option>
+                    {colorOptions.map(color => (
+                      <option key={color} value={color}>{color}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="varPrice">Price ($)*</label>
+                  <input
+                    type="number"
+                    id="varPrice"
+                    name="varPrice"
+                    value={newVariant.varPrice}
+                    onChange={handleVariantChange}
+                    placeholder="Enter price"
+                    step="0.01"
+                    min="0.01"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="quantity">Initial Stock Quantity</label>
+                  <input
+                    type="number"
+                    id="quantity"
+                    name="quantity"
+                    value={newVariant.quantity}
+                    onChange={handleVariantChange}
+                    placeholder="Enter initial quantity"
+                    min="0"
+                  />
+                </div>
+              </div>
+              
+              <button 
+                type="button" 
+                className="add-variant-button"
+                onClick={addVariant}
+              >
+                Add Variant
+              </button>
+            </div>
+          )}
+          
+          {variants.length > 0 ? (
+            <div className="variants-table-container">
+              <table className="variants-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Size</th>
+                    <th>Color</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {variants.map((variant, index) => (
+                    <tr key={variant.varID || variant.tempId || index}>
+                      <td>{variant.varSKU}</td>
+                      <td>{variant.size || variant.attributes?.find(a => a.name === 'Size')?.value || 'N/A'}</td>
+                      <td>{variant.color || variant.attributes?.find(a => a.name === 'Color')?.value || 'N/A'}</td>
+                      <td>${parseFloat(variant.varPrice).toFixed(2)}</td>
+                      <td>{variant.quantity || variant.invQty || 0}</td>
+                      <td className="actions-cell">
+                        <button
+                          type="button"
+                          className="remove-button"
+                          onClick={() => removeVariant(index)}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="no-variants-message">
+              <p>No variants added yet. Add variants to create different sizes, colors, etc.</p>
+            </div>
+          )}
+        </div>
+
         {/* Product Images Section */}
         <div className="product-images-section">
           <h3>Product Images</h3>
@@ -392,17 +683,17 @@ const ProductForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="variantID">Associate with Variant</label>
+              <label htmlFor="varID">Associate with Variant</label>
               <select
-                id="variantID"
-                name="variantID"
-                value={newImage.variantID}
+                id="varID"
+                name="varID"
+                value={newImage.varID}
                 onChange={handleImageChange}
               >
                 <option value="">Not associated with a variant</option>
                 {variants.map(variant => (
-                  <option key={variant.varID} value={variant.varID}>
-                    {variant.varSKU || `Variant ${variant.varID}`}
+                  <option key={variant.varID || variant.tempId} value={variant.varID || variant.tempId}>
+                    {variant.varSKU || `Variant ${variant.varID || 'New'}`}
                   </option>
                 ))}
               </select>

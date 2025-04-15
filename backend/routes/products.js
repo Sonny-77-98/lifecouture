@@ -188,6 +188,8 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     let categories = req.body.categories;
     let attributes = req.body.attributes;
+    let variants = req.body.variants || [];
+    let images = req.body.images || [];
     
     if (typeof categories === 'string') {
       try {
@@ -205,15 +207,17 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
     
-    const { prodTitle, prodDesc, prodURL, prodStat, imageUrl, imageAlt } = req.body;
+    const { prodTitle, prodDesc, prodURL, prodStat } = req.body;
     
     if (!prodTitle || !prodDesc) {
       return res.status(400).json({ message: 'Product title and description are required' });
     }
+    
     const { pool } = require('../config/db');
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
+    // Insert the product
     const [productResult] = await connection.execute(
       'INSERT INTO Product (prodTitle, prodDesc, prodURL, prodStat) VALUES (?, ?, ?, ?)',
         [prodTitle, prodDesc, prodURL, prodStat]
@@ -221,13 +225,27 @@ router.post('/', authMiddleware, async (req, res) => {
     
     const productId = productResult.insertId;
 
-    if (imageUrl) {
+    // Insert main product image if provided
+    if (prodURL) {
       await connection.execute(
         'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
-        [imageUrl, imageAlt || prodTitle, productId]
+        [prodURL, prodTitle, productId]
       );
     }
 
+    // Insert additional product images if provided
+    if (images && images.length > 0) {
+      for (const image of images) {
+        if (image.imgURL) {
+          await connection.execute(
+            'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
+            [image.imgURL, image.imgAlt || prodTitle, productId]
+          );
+        }
+      }
+    }
+
+    // Insert product categories
     if (categories && categories.length > 0) {
       for (const catID of categories) {
         await connection.execute(
@@ -237,6 +255,7 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
 
+    // Insert product attributes
     if (attributes && Object.keys(attributes).length > 0) {
       for (const [attID, value] of Object.entries(attributes)) {
         if (value) {
@@ -245,6 +264,38 @@ router.post('/', authMiddleware, async (req, res) => {
             [productId, attID, value]
           );
         }
+      }
+    }
+    
+    // Process variants
+    if (variants && variants.length > 0) {
+      for (const variant of variants) {
+        // Insert the variant
+        const [variantResult] = await connection.execute(
+          'INSERT INTO ProductVariants (varSKU, varBCode, prodID, varPrice) VALUES (?, ?, ?, ?)',
+          [variant.varSKU, variant.varBCode || null, productId, parseFloat(variant.varPrice) || 83.54]
+        );
+        
+        const variantId = variantResult.insertId;
+        
+        // Insert variant attributes (size, color, etc.)
+        if (variant.attributes && variant.attributes.length > 0) {
+          for (const attr of variant.attributes) {
+            if (attr.attValue) {
+              await connection.execute(
+                'INSERT INTO VariantAttributesValues (varID, attID, attValue) VALUES (?, ?, ?)',
+                [variantId, attr.attID, attr.attValue]
+              );
+            }
+          }
+        }
+        
+        // Create inventory record for the variant
+        const quantity = parseInt(variant.quantity) || 0;
+        await connection.execute(
+          'INSERT INTO Inventory (invQty, InvLowStockThreshold, varID) VALUES (?, ?, ?)',
+          [quantity, 5, variantId]
+        );
       }
     }
 
