@@ -33,7 +33,7 @@ const authMiddleware = async (req, res, next) => {
 router.get('/count', async (req, res) => {
   try {
     const countResult = await query('SELECT COUNT(*) as total FROM Orders');
-    res.json({ count: countResult[0].count });
+    res.json({ count: countResult[0].length });
   } catch (error) {
     console.error('Error counting orders:', error);
     res.status(500).json({ error: error.message });

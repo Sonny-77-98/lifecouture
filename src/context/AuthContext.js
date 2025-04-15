@@ -47,8 +47,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Attempting login with:', { username, password });
       setError(null);
-      
-      // Use the API_URL from environment variable
+
       const loginUrl = `/api/auth/login`;
       const res = await axios.post(loginUrl, { username, password });
       
