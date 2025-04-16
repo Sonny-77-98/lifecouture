@@ -40,6 +40,7 @@ const ProductForm = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [variantsToDelete, setVariantsToDelete] = useState([]);
 
   const statusOptions = [
     'active',
@@ -142,9 +143,13 @@ const ProductForm = () => {
     const { name, value } = e.target;
     
     if (name === 'varID') {
-      console.log(`Variant selection changed to: ${value === '' ? 'NONE/NULL' : value}`);
-      const varID = value === '' ? null : value;
-      setNewImage(prev => ({ ...prev, varID }));
+      const varID = value === '' ? null : parseInt(value, 10);
+      if (value !== '' && isNaN(varID)) {
+        console.error('Invalid variant ID:', value);
+        setNewImage(prev => ({ ...prev, varID: null }));
+      } else {
+        setNewImage(prev => ({ ...prev, varID }));
+      }
     } else {
       setNewImage(prev => ({ ...prev, [name]: value }));
     }
@@ -155,13 +160,7 @@ const ProductForm = () => {
       alert('Please enter an image URL');
       return;
     }
-
-    console.log('Adding image with data:', {
-      imgURL: newImage.imgURL,
-      imgAlt: newImage.imgAlt,
-      varID: newImage.varID === '' ? 'EMPTY STRING' : newImage.varID
-    });
-    
+  
     try {
       if (isEditMode && id) {
         const response = await axios.post(`/api/products/${id}/images`, {
@@ -169,8 +168,15 @@ const ProductForm = () => {
           imgAlt: newImage.imgAlt,
           varID: newImage.varID
         });
-
-        setProductImages([...productImages, response.data]);
+        if (response && response.data) {
+          setProductImages([...productImages, response.data]);
+        } else {
+          const tempImage = {
+            ...newImage,
+            tempId: Date.now()
+          };
+          setProductImages([...productImages, tempImage]);
+        }
       } else {
         const imageToAdd = {
           ...newImage,
@@ -186,7 +192,19 @@ const ProductForm = () => {
       });
     } catch (error) {
       console.error('Error adding image:', error);
-      alert('Failed to add image: ' + (error.response?.data?.message || error.message));
+      const imageToAdd = {
+        ...newImage,
+        tempId: Date.now()
+      };
+      setProductImages([...productImages, imageToAdd]);
+
+      setNewImage({ 
+        imgURL: '', 
+        imgAlt: '', 
+        varID: null
+      });
+
+      alert('The image was added locally but there was an issue saving to the database. It will be saved when you update the product.');
     }
   };
 
@@ -237,6 +255,15 @@ const ProductForm = () => {
       alert('Please enter a price for this variant');
       return;
     }
+
+    const duplicateSKU = variants.some(v => 
+      v.varSKU.toLowerCase() === newVariant.varSKU.toLowerCase()
+    );
+    
+    if (duplicateSKU) {
+      alert(`A variant with SKU "${newVariant.varSKU}" already exists.`);
+      return;
+    }
     
     const variantToAdd = {
       ...newVariant,
@@ -253,6 +280,10 @@ const ProductForm = () => {
   };
   
   const removeVariant = (index) => {
+    const variantToRemove = variants[index];
+    if (variantToRemove.varID) {
+      setVariantsToDelete([...variantsToDelete, variantToRemove.varID]);
+    }
     const updatedVariants = [...variants];
     updatedVariants.splice(index, 1);
     setVariants(updatedVariants);
@@ -283,7 +314,8 @@ const ProductForm = () => {
           varBCode: variant.varBCode,
           varPrice: parseFloat(variant.varPrice),
           quantity: parseInt(variant.quantity),
-        }))
+        })),
+        variantsToDelete: variantsToDelete 
       };
       
       console.log('Submitting product data:', productData);
@@ -632,17 +664,17 @@ const ProductForm = () => {
             <div className="form-group">
               <label htmlFor="varID">Associate with Variant</label>
               <select
-                id="varID"
-                name="varID"
-                value={newImage.varID}
-                onChange={handleImageChange}
-              >
-                <option value="">Not associated with a variant</option>
-                {variants.map(variant => (
-                  <option key={variant.varID || variant.tempId} value={variant.varID || variant.tempId}>
-                    {variant.varSKU || `Variant ${variant.varID || 'New'}`}
-                  </option>
-                ))}
+                  id="varID"
+                  name="varID"
+                  value={newImage.varID || ''}
+                  onChange={handleImageChange}
+                >
+                  <option value="">Not associated with a variant</option>
+                  {variants.map(variant => (
+                    <option key={variant.varID || variant.tempId} value={variant.varID || ''}>
+                      {variant.varSKU || `Variant ${variant.varID || 'New'}`}
+                    </option>
+                  ))}
               </select>
             </div>
             

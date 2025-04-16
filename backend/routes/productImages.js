@@ -14,7 +14,6 @@ router.get('/products/:id/images', async (req, res) => {
       [req.params.id]
     );
     
-    // Safely extract the rows from the query result
     const rows = queryResult[0];
 
     console.log(`Retrieved ${rows.length} images for product ${req.params.id}`);
@@ -79,22 +78,9 @@ router.post('/products/:id/images', authMiddleware, async (req, res) => {
       `INSERT INTO ProductImages (imgURL, imgAlt, imgWidth, imgHeight, prodID, varID)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [imgURL, imgAltValue, imgWidthValue, imgHeightValue, prodID, varIDValue]
-    );
+    );    
     
-    /*console.log('Raw insert result:', JSON.stringify(insertResult));
-    
-    if (!insertResult || !Array.isArray(insertResult) || insertResult.length < 1) {
-      throw new Error('Failed to get insert result from database');
-    }
-    
-    const result = insertResult[0];
-    console.log('Insert operation result object:', result);
-    
-    if (!result || typeof result.insertId === 'undefined') {
-      throw new Error('Insert operation did not return an insertId');
-    }*/
-    
-    const newImageId = result.insertId;
+    const newImageId = insertResult[0].insertId;
     console.log(`Created new image with ID ${newImageId}, varID: ${varIDValue || 'NULL'}`);
     
     // Fetching the newly inserted image
