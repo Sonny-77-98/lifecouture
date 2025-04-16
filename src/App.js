@@ -22,13 +22,14 @@ import UserForm from './components/admin/UserForm';
 import UserList from './components/admin/UserList';
 import UserAddresses from './components/admin/UserAddresses';
 import ProductFilter from './ProductFilter';
+import FAQ from './FAQ';
 
 // Storefront components
 import Cart from './Cart';
 import Checkout from './Checkout';
 import About from './About';
 
-// New Breadcrumb component
+//Breadcrumb component
 import Breadcrumb from './components/Breadcrumb';
 
 // Styles
@@ -46,7 +47,6 @@ function App() {
       try {
         setLoading(true);
         const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-
         const response = await fetch(`${API_URL}/api/products`);
 
         if (!response.ok) {
@@ -76,7 +76,6 @@ function App() {
 
   const isAdminRoute = window.location.pathname.startsWith('/Admin') || window.location.pathname === '/Login';
 
-  // Filter products based on search query
   const filteredProducts = productList.filter((product) =>
     product.prodTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -84,7 +83,6 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        {/* Navbar for non-admin routes */}
         {!isAdminRoute && (
           <div className="navbar">
             <div className="logo">Life Couture</div>
@@ -98,45 +96,37 @@ function App() {
         )}
 
         <div className={isAdminRoute ? 'app' : 'container'}>
-          {/* Breadcrumb component */}
           {!isAdminRoute && <Breadcrumb />}
 
           <Routes>
-            {/* Admin Routes */}
             <Route path="/Login" element={<Login />} />
             <Route path="/Admin" element={<Navigate to="/admin/dashboard" />} />
             <Route path="/Admin/Dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            
-            {/* Product Management Routes */}
             <Route path="/Admin/Products" element={<PrivateRoute><ProductList /></PrivateRoute>} />
             <Route path="/Admin/Products/Add" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
             <Route path="/Admin/Products/Edit/:id" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
-            
-            {/* Category Management Routes */}
             <Route path="/Admin/Categories" element={<PrivateRoute><CategoryList /></PrivateRoute>} />
             <Route path="/Admin/Categories/Add" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
             <Route path="/Admin/Categories/Edit/:id" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
-            
-            {/* Inventory Management Route */}
             <Route path="/Admin/Inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
-            
-            {/* Storefront Routes */}
-            <Route path="/" element={<Home 
-              productList={filteredProducts} 
-              loading={loading} 
-              error={error} 
-              addToCart={addToCart} 
-              setSearchQuery={setSearchQuery} 
-              searchQuery={searchQuery} 
-            />} />
+            <Route path="/" element={
+              <Home
+                productList={filteredProducts}
+                loading={loading}
+                error={error}
+                addToCart={addToCart}
+                setSearchQuery={setSearchQuery}
+                searchQuery={searchQuery}
+              />
+            } />
             <Route path="/Cart" element={<Cart cart={cart} setCart={setCart} />} />
             <Route path="/Checkout" element={<Checkout cart={cart} setCart={setCart} />} />
             <Route path="/About" element={<About />} />
             <Route path="/ProductFilter" element={<ProductFilter addToCart={addToCart} />} />
+            <Route path="/FAQ" element={<FAQ />} />
           </Routes>
         </div>
 
-        {/* Footer */}
         <Footer />
       </Router>
     </AuthProvider>
@@ -192,11 +182,14 @@ const Home = ({ productList, loading, error, addToCart, setSearchQuery, searchQu
               <img
                 src={product.prodURL}
                 alt={product.prodTitle}
-                onError={(e) => (e.target.src = "https://imgur.com/gallery/crumble-s-daily-picture-3wYunFD#/t/cat")}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://via.placeholder.com/200?text=No+Image";
+                }}
               />
             </div>
-            <div>{product.prodTitle}</div>
-            <div>{product.prodDesc}</div>
+            <div className="product-title">{product.prodTitle}</div>
+            <div className="product-desc">{product.prodDesc}</div>
             <button onClick={() => addToCart(product)}>Add to Cart</button>
           </div>
         ))

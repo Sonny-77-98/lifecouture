@@ -300,10 +300,10 @@ footer {
 /* Product Section */
 .products {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
   margin-top: 30px;
-  align-items: start;  /* Important: align cards to the top */
+  align-items: stretch;
 }
 
 .product-card {
@@ -317,13 +317,12 @@ footer {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   padding: 20px;
   text-align: center;
-  height: 100%;
-  min-height: 480px;  /* Adjusted: Ensures consistent height */
+  height: auto;
 }
 
 .product-card .product-image img {
   width: 100%;
-  height: 200px;       /* Fixed height for images */
+  height: 200px;
   object-fit: contain;
   border-radius: 8px;
 }
@@ -337,7 +336,7 @@ footer {
 .product-card .product-desc {
   font-size: 1rem;
   color: #777;
-  flex-grow: 1;      /* Push the button to the bottom */
+  flex-grow: 1;
   margin-bottom: 20px;
 }
 

@@ -1,22 +1,23 @@
 import React from 'react';
-import './About.css'; // Keep the import for the About.css file
+import { Link } from 'react-router-dom';
+import './About.css';
 
 function About() {
   return (
     <div
       className="about-container"
       style={{
-        backgroundImage: 'url(https://i.imgur.com/kTc1tSm.jpeg)', // Your background image URL
-        backgroundSize: 'cover', // Ensure the image covers the entire screen
-        backgroundPosition: 'center center', // Center the image
-        backgroundAttachment: 'fixed', // Keep the background fixed
-        height: '100vh', // Ensure the div takes the full viewport height
-        width: '100%', // Ensure the div takes the full viewport width
+        backgroundImage: 'url(https://i.imgur.com/kTc1tSm.jpeg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center center',
+        backgroundAttachment: 'fixed',
+        height: '100vh',
+        width: '100%',
         padding: '60px 20px',
         color: 'white',
         textAlign: 'center',
-        margin: 0, // Remove any margin that could cause white space
-        overflowX: 'hidden', // Prevent horizontal scroll
+        margin: 0,
+        overflowX: 'hidden',
         boxSizing: 'border-box',
       }}
     >
@@ -31,6 +32,9 @@ function About() {
         <p>
           <strong>All for your casual yet stylish needs!</strong>
         </p>
+        <Link to="/FAQ" style={{ color: '#ffd700', textDecoration: 'underline', display: 'block', marginTop: '20px' }}>
+        Visit Our FAQ Page
+        </Link>
       </div>
     </div>
   );
