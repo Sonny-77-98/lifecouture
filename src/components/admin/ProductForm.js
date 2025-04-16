@@ -20,7 +20,7 @@ const ProductForm = () => {
   const [newImage, setNewImage] = useState({ 
     imgURL: '', 
     imgAlt: '', 
-    varID: '' | null  
+    varID: null  
   });
   
   // State for variant management
@@ -29,7 +29,7 @@ const ProductForm = () => {
   const [newVariant, setNewVariant] = useState({
     varSKU: '',
     varBCode: '',
-    varPrice: '83.54',
+    varPrice: '99.99',
     size: '',
     color: '',
     quantity: '10'
@@ -41,11 +41,6 @@ const ProductForm = () => {
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Standard size and color options
-  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'One Size'];
-  const colorOptions = ['Black', 'White', 'Gray', 'Navy', 'Red', 'Blue', 'Green'];
-
-  // Status options
   const statusOptions = [
     'active',
     'inactive',
@@ -226,11 +221,9 @@ const ProductForm = () => {
     const productPrefix = formData.prodTitle
       .slice(0, 3)
       .toUpperCase();
+    const uniqueId = Date.now().toString().slice(-4);
     
-    const size = newVariant.size || 'OS';
-    const color = newVariant.color ? newVariant.color.slice(0, 3).toUpperCase() : 'STD';
-    
-    const sku = `${productPrefix}-${size}-${color}`;
+    const sku = `${productPrefix}-${uniqueId}`;
     setNewVariant(prev => ({ ...prev, varSKU: sku }));
   };
   
@@ -247,20 +240,14 @@ const ProductForm = () => {
     
     const variantToAdd = {
       ...newVariant,
-      tempId: Date.now(),
-      attributes: [
-        { name: 'Size', value: newVariant.size },
-        { name: 'Color', value: newVariant.color }
-      ]
+      tempId: Date.now()
     };
     
     setVariants([...variants, variantToAdd]);
     setNewVariant({
       varSKU: '',
       varBCode: '',
-      varPrice: '83.54',
-      size: '',
-      color: '',
+      varPrice: '99.99',
       quantity: '10'
     });
   };
@@ -296,10 +283,6 @@ const ProductForm = () => {
           varBCode: variant.varBCode,
           varPrice: parseFloat(variant.varPrice),
           quantity: parseInt(variant.quantity),
-          attributes: [
-            { attID: 1, attValue: variant.size },
-            { attID: 2, attValue: variant.color }
-          ]
         }))
       };
       
@@ -507,39 +490,7 @@ const ProductForm = () => {
                   />
                 </div>
               </div>
-              
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="size">Size*</label>
-                  <select
-                    id="size"
-                    name="size"
-                    value={newVariant.size}
-                    onChange={handleVariantChange}
-                  >
-                    <option value="">Select Size</option>
-                    {sizeOptions.map(size => (
-                      <option key={size} value={size}>{size}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="color">Color*</label>
-                  <select
-                    id="color"
-                    name="color"
-                    value={newVariant.color}
-                    onChange={handleVariantChange}
-                  >
-                    <option value="">Select Color</option>
-                    {colorOptions.map(color => (
-                      <option key={color} value={color}>{color}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
+                           
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="varPrice">Price ($)*</label>
@@ -585,8 +536,6 @@ const ProductForm = () => {
                 <thead>
                   <tr>
                     <th>SKU</th>
-                    <th>Size</th>
-                    <th>Color</th>
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Actions</th>
@@ -596,8 +545,6 @@ const ProductForm = () => {
                   {variants.map((variant, index) => (
                     <tr key={variant.varID || variant.tempId || index}>
                       <td>{variant.varSKU}</td>
-                      <td>{variant.size || variant.attributes?.find(a => a.name === 'Size')?.value || 'N/A'}</td>
-                      <td>{variant.color || variant.attributes?.find(a => a.name === 'Color')?.value || 'N/A'}</td>
                       <td>${parseFloat(variant.varPrice).toFixed(2)}</td>
                       <td>{variant.quantity || variant.invQty || 0}</td>
                       <td className="actions-cell">

@@ -6,13 +6,16 @@ const pool = require('../config/db');
 
 router.get('/products/:id/images', async (req, res) => {
   try {
-    const [rows] = await pool.query(
+    const queryResult = await pool.query(
       `SELECT pi.*, pv.varSKU 
        FROM ProductImages pi
        LEFT JOIN ProductVariants pv ON pi.varID = pv.varID
        WHERE pi.prodID = ?`,
       [req.params.id]
     );
+    
+    // Safely extract the rows from the query result
+    const rows = queryResult[0];
 
     console.log(`Retrieved ${rows.length} images for product ${req.params.id}`);
     rows.forEach(row => {
@@ -29,50 +32,115 @@ router.get('/products/:id/images', async (req, res) => {
 router.post('/products/:id/images', authMiddleware, async (req, res) => {
   const { imgURL, imgAlt, varID, imgWidth, imgHeight } = req.body;
   const prodID = req.params.id;
-  
+ 
   if (!imgURL) {
     return res.status(400).json({ message: 'Image URL is required' });
   }
-
-  console.log(`Processing POST - varID input: '${varID}', processed: '${varID}'`);
   
+  // More detailed logging of the input parameters
+  console.log('Image creation parameters:', {
+    imgURL,
+    imgAlt: imgAlt || 'null',
+    imgWidth: imgWidth || 'null',
+    imgHeight: imgHeight || 'null',
+    prodID,
+    varID: varID || 'null'
+  });
+ 
   try {
     if (varID) {
-      const [variantCheck] = await pool.query(
-        'SELECT varID FROM ProductVariants WHERE varID = ?', 
-        [varID]
-      );
-      
-      // Fix for the length error - make sure variantCheck is an array before checking length
-      if (!variantCheck || variantCheck.length === 0) {
-        console.warn(`Warning: Variant ID ${varID} does not exist in the database`);
+      try {
+        const variantCheckResult = await pool.query(
+          'SELECT varID FROM ProductVariants WHERE varID = ?', 
+          [varID]
+        );
+        const variantCheck = variantCheckResult[0];
+        
+        if (!variantCheck || variantCheck.length === 0) {
+          console.warn(`Warning: Variant ID ${varID} does not exist in the database`);
+        } else {
+          console.log(`Verified that variant ID ${varID} exists in the database`);
+        }
+      } catch (variantError) {
+        console.error('Error checking variant:', variantError);
       }
     }
-
-    const [result] = await pool.query(
-      `INSERT INTO ProductImages (imgURL, imgAlt, imgWidth, imgHeight, prodID, varID) 
+    
+    const imgAltValue = imgAlt || null;
+    const imgWidthValue = imgWidth || null;
+    const imgHeightValue = imgHeight || null;
+    const varIDValue = varID || null;
+    
+    console.log('About to execute INSERT query with values:', [
+      imgURL, imgAltValue, imgWidthValue, imgHeightValue, prodID, varIDValue
+    ]);
+   
+    const insertResult = await pool.query(
+      `INSERT INTO ProductImages (imgURL, imgAlt, imgWidth, imgHeight, prodID, varID)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [imgURL, imgAlt || null, imgWidth || null, imgHeight || null, prodID, varID || null]
+      [imgURL, imgAltValue, imgWidthValue, imgHeightValue, prodID, varIDValue]
     );
     
+    /*console.log('Raw insert result:', JSON.stringify(insertResult));
+    
+    if (!insertResult || !Array.isArray(insertResult) || insertResult.length < 1) {
+      throw new Error('Failed to get insert result from database');
+    }
+    
+    const result = insertResult[0];
+    console.log('Insert operation result object:', result);
+    
+    if (!result || typeof result.insertId === 'undefined') {
+      throw new Error('Insert operation did not return an insertId');
+    }*/
+    
     const newImageId = result.insertId;
-    console.log(`Created new image with ID ${newImageId}, varID: ${varID || 'NULL'}`);
- 
-    const [newImage] = await pool.query(
-      `SELECT pi.*, pv.varSKU 
+    console.log(`Created new image with ID ${newImageId}, varID: ${varIDValue || 'NULL'}`);
+    
+    // Fetching the newly inserted image
+    console.log('Fetching newly created image with ID:', newImageId);
+    
+    const newImageResult = await pool.query(
+      `SELECT pi.*, pv.varSKU
        FROM ProductImages pi
        LEFT JOIN ProductVariants pv ON pi.varID = pv.varID
        WHERE pi.imgID = ?`,
       [newImageId]
     );
+    
+    console.log('New image query result:', JSON.stringify(newImageResult));
+    const newImage = newImageResult[0];
+    console.log('Extracted new image array:', newImage);
+   
     if (newImage && newImage.length > 0) {
+      console.log('Returning image data:', newImage[0]);
       res.status(201).json(newImage[0]);
     } else {
-      res.status(201).json({ imgID: newImageId, message: 'Image created but details could not be retrieved' });
+      console.log('Image created but details could not be retrieved');
+      res.status(201).json({ 
+        imgID: newImageId, 
+        message: 'Image created but details could not be retrieved' 
+      });
     }
   } catch (error) {
-    console.error('Error adding product image:', error);
-    res.status(500).json({ message: 'Error adding product image', error: error.message });
+    console.error('Detailed error adding product image:', error);
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      res.status(400).json({ 
+        message: 'Error adding product image', 
+        error: 'The variant or product ID does not exist'
+      });
+    } else if (error.code === 'ER_BAD_NULL_ERROR') {
+      res.status(400).json({ 
+        message: 'Error adding product image', 
+        error: 'A required field cannot be NULL'
+      });
+    } else {
+      res.status(500).json({ 
+        message: 'Error adding product image', 
+        error: error.message,
+        details: 'Check server logs for more information'
+      });
+    }
   }
 });
 
@@ -88,37 +156,45 @@ router.put('/products/images/:id', authMiddleware, async (req, res) => {
   console.log(`Processing PUT - varID input: '${varID}', processed: '${processedVarID}'`);
   
   try {
+
     if (processedVarID !== null) {
-      const [variantCheck] = await pool.query(
-        'SELECT varID FROM ProductVariants WHERE varID = ?', 
-        [processedVarID]
-      );
-      
-      if (variantCheck.length === 0) {
-        console.warn(`Warning: Variant ID ${processedVarID} does not exist in the database`);
+      try {
+        const variantCheckResult = await pool.query(
+          'SELECT varID FROM ProductVariants WHERE varID = ?', 
+          [processedVarID]
+        );
+        const variantCheck = variantCheckResult[0];
+        
+        if (variantCheck.length === 0) {
+          console.warn(`Warning: Variant ID ${processedVarID} does not exist in the database`);
+        }
+      } catch (variantError) {
+        console.error('Error checking variant:', variantError);
+
       }
     }
-    
-    const [updateResult] = await pool.query(
+ 
+    const updateResult = await pool.query(
       `UPDATE ProductImages 
        SET imgURL = ?, imgAlt = ?, imgWidth = ?, imgHeight = ?, varID = ? 
        WHERE imgID = ?`,
       [imgURL, imgAlt, imgWidth || null, imgHeight || null, processedVarID, imgID]
     );
+ 
+    const updateResultData = updateResult[0];
     
-    console.log(`Updated image ID ${imgID}, set varID to: ${processedVarID}, affected rows: ${updateResult.affectedRows}`);
+    console.log(`Updated image ID ${imgID}, set varID to: ${processedVarID}`);
     
-    if (updateResult.affectedRows === 0) {
-      return res.status(404).json({ message: 'Image not found' });
-    }
-    
-    const [updatedImage] = await pool.query(
+
+    const updatedImageResult = await pool.query(
       `SELECT pi.*, pv.varSKU 
        FROM ProductImages pi
        LEFT JOIN ProductVariants pv ON pi.varID = pv.varID
        WHERE pi.imgID = ?`,
       [imgID]
     );
+ 
+    const updatedImage = updatedImageResult[0];
     
     if (updatedImage.length === 0) {
       return res.status(404).json({ message: 'Image not found' });
@@ -140,14 +216,11 @@ router.delete('/products/images/:id', authMiddleware, async (req, res) => {
   
   try {
     console.log(`Executing query: DELETE FROM ProductImages WHERE imgID = ${imgID}`);
-    
-    const [result] = await pool.query('DELETE FROM ProductImages WHERE imgID = ?', [imgID]);
+
+    const [deleteResult] = await pool.query('DELETE FROM ProductImages WHERE imgID = ?', [imgID]);
+    const result = deleteResult.affectedRows;
     
     console.log('Delete result:', result);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Image not found' });
-    }
     
     res.json({ message: 'Image deleted successfully' });
   } catch (error) {
