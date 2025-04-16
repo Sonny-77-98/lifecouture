@@ -17,10 +17,15 @@ const Breadcrumb = () => {
     if (path === 'checkout') {
       breadcrumbs.push({ name: 'Cart', path: '/cart' });
       breadcrumbs.push({ name: 'Checkout', path: '/checkout' });
-    } else if (path !== 'cart') {
+    }
+    else if (path === 'FAQ') {
+      breadcrumbs.push({ name: 'About', path: '/about' });
+      breadcrumbs.push({ name: 'FAQ', path: '/FAQ' });
+    }
+    else if (path !== 'cart') {
       breadcrumbs.push({
         name,
-        path: `/${pathnames.slice(0, index + 1).join('/')}`
+        path: `/${pathnames.slice(0, index + 1).join('/')}`,
       });
     }
   });
