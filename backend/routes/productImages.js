@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const mysql = require('mysql2/promise');
+const { query, pool } = require('../config/db');
 const { authMiddleware } = require('./authentication');
-const pool = require('../config/db');
 
 router.get('/products/:id/images', async (req, res) => {
   try {
-    const queryResult = await pool.query(
+    const images = await query(
       `SELECT pi.*, pv.varSKU 
        FROM ProductImages pi
        LEFT JOIN ProductVariants pv ON pi.varID = pv.varID
@@ -14,14 +13,8 @@ router.get('/products/:id/images', async (req, res) => {
       [req.params.id]
     );
     
-    const rows = queryResult[0];
-
-    console.log(`Retrieved ${rows.length} images for product ${req.params.id}`);
-    rows.forEach(row => {
-      console.log(`Image ID: ${row.imgID}, VarID: ${row.varID || 'NULL'}, VarSKU: ${row.varSKU || 'NULL'}`);
-    });
-    
-    res.json(rows);
+    console.log(`Retrieved ${images.length} images for product ${req.params.id}`);
+    res.json(images);
   } catch (error) {
     console.error('Error fetching product images:', error);
     res.status(500).json({ message: 'Error fetching product images' });
@@ -49,11 +42,10 @@ router.post('/products/:id/images', authMiddleware, async (req, res) => {
   try {
     if (varID) {
       try {
-        const variantCheckResult = await pool.query(
+        const variantCheck = await query(
           'SELECT varID FROM ProductVariants WHERE varID = ?', 
           [varID]
         );
-        const variantCheck = variantCheckResult[0];
         
         if (!variantCheck || variantCheck.length === 0) {
           console.warn(`Warning: Variant ID ${varID} does not exist in the database`);
@@ -74,19 +66,19 @@ router.post('/products/:id/images', authMiddleware, async (req, res) => {
       imgURL, imgAltValue, imgWidthValue, imgHeightValue, prodID, varIDValue
     ]);
    
-    const insertResult = await pool.query(
+    const insertResult = await query(
       `INSERT INTO ProductImages (imgURL, imgAlt, imgWidth, imgHeight, prodID, varID)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [imgURL, imgAltValue, imgWidthValue, imgHeightValue, prodID, varIDValue]
     );    
     
-    const newImageId = insertResult[0].insertId;
+    const newImageId = insertResult.insertId;
     console.log(`Created new image with ID ${newImageId}, varID: ${varIDValue || 'NULL'}`);
     
     // Fetching the newly inserted image
     console.log('Fetching newly created image with ID:', newImageId);
     
-    const newImageResult = await pool.query(
+    const newImage = await query(
       `SELECT pi.*, pv.varSKU
        FROM ProductImages pi
        LEFT JOIN ProductVariants pv ON pi.varID = pv.varID
@@ -94,9 +86,7 @@ router.post('/products/:id/images', authMiddleware, async (req, res) => {
       [newImageId]
     );
     
-    console.log('New image query result:', JSON.stringify(newImageResult));
-    const newImage = newImageResult[0];
-    console.log('Extracted new image array:', newImage);
+    console.log('New image query result:', JSON.stringify(newImage));
    
     if (newImage && newImage.length > 0) {
       console.log('Returning image data:', newImage[0]);
@@ -142,45 +132,37 @@ router.put('/products/images/:id', authMiddleware, async (req, res) => {
   console.log(`Processing PUT - varID input: '${varID}', processed: '${processedVarID}'`);
   
   try {
-
     if (processedVarID !== null) {
       try {
-        const variantCheckResult = await pool.query(
+        const variantCheck = await query(
           'SELECT varID FROM ProductVariants WHERE varID = ?', 
           [processedVarID]
         );
-        const variantCheck = variantCheckResult[0];
         
         if (variantCheck.length === 0) {
           console.warn(`Warning: Variant ID ${processedVarID} does not exist in the database`);
         }
       } catch (variantError) {
         console.error('Error checking variant:', variantError);
-
       }
     }
  
-    const updateResult = await pool.query(
+    await query(
       `UPDATE ProductImages 
        SET imgURL = ?, imgAlt = ?, imgWidth = ?, imgHeight = ?, varID = ? 
        WHERE imgID = ?`,
       [imgURL, imgAlt, imgWidth || null, imgHeight || null, processedVarID, imgID]
     );
- 
-    const updateResultData = updateResult[0];
     
     console.log(`Updated image ID ${imgID}, set varID to: ${processedVarID}`);
     
-
-    const updatedImageResult = await pool.query(
+    const updatedImage = await query(
       `SELECT pi.*, pv.varSKU 
        FROM ProductImages pi
        LEFT JOIN ProductVariants pv ON pi.varID = pv.varID
        WHERE pi.imgID = ?`,
       [imgID]
     );
- 
-    const updatedImage = updatedImageResult[0];
     
     if (updatedImage.length === 0) {
       return res.status(404).json({ message: 'Image not found' });
@@ -193,6 +175,7 @@ router.put('/products/images/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Fix for the DELETE route - The main issue is here
 router.delete('/products/images/:id', authMiddleware, async (req, res) => {
   const imgID = req.params.id;
 
@@ -201,17 +184,25 @@ router.delete('/products/images/:id', authMiddleware, async (req, res) => {
   }
   
   try {
-    console.log(`Executing query: DELETE FROM ProductImages WHERE imgID = ${imgID}`);
+    console.log(`Attempting to delete image with ID: ${imgID}`);
 
-    const [deleteResult] = await pool.query('DELETE FROM ProductImages WHERE imgID = ?', [imgID]);
-    const result = deleteResult.affectedRows;
+    // Use the query function properly, avoiding returning the result directly
+    const result = await query('DELETE FROM ProductImages WHERE imgID = ?', [imgID]);
     
     console.log('Delete result:', result);
     
-    res.json({ message: 'Image deleted successfully' });
+    if (result.affectedRows > 0) {
+      res.json({ message: 'Image deleted successfully', success: true });
+    } else {
+      res.status(404).json({ message: 'Image not found', success: false });
+    }
   } catch (error) {
     console.error('Error deleting product image:', error);
-    res.status(500).json({ message: 'Error deleting product image', error: error.message });
+    res.status(500).json({ 
+      message: 'Error deleting product image', 
+      error: error.message,
+      success: false 
+    });
   }
 });
 

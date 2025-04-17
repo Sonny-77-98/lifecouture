@@ -221,8 +221,14 @@ const ProductForm = () => {
     } catch (error) {
       console.error('Error removing image:', error);
       alert('Failed to remove image: ' + (error.response?.data?.message || error.message));
+
+      if (!isEditMode || !imageToRemove.imgID) {
+        const updatedImages = [...productImages];
+        updatedImages.splice(index, 1);
+        setProductImages(updatedImages);
+      }
     }
-  };
+  }
 
 
   const handleVariantChange = (e) => {
@@ -280,9 +286,9 @@ const ProductForm = () => {
   };
   
   const removeVariant = (index) => {
-    const variantToRemove = variants[index];
+    const variantToRemove = variants[index];  
     if (variantToRemove.varID) {
-      setVariantsToDelete([...variantsToDelete, variantToRemove.varID]);
+      setVariantsToDelete(prev => [...prev, variantToRemove.varID]);
     }
     const updatedVariants = [...variants];
     updatedVariants.splice(index, 1);
@@ -310,6 +316,7 @@ const ProductForm = () => {
           varID: image.varID || null
         })),
         variants: variants.map(variant => ({
+          varID: variant.varID || null, 
           varSKU: variant.varSKU,
           varBCode: variant.varBCode,
           varPrice: parseFloat(variant.varPrice),
@@ -340,7 +347,8 @@ const ProductForm = () => {
         setProductImages([]);
         setVariants([]);
       }
-      
+      setVariantsToDelete([]);
+
       setTimeout(() => {
         navigate('/admin/products');
       }, 2000);
