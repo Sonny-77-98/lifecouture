@@ -7,8 +7,6 @@ const ProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = !!id;
-  
-  // Add custom styles to the component
   const variantTableStyles = `
     .variant-images-thumbnail {
       display: flex;
@@ -133,6 +131,8 @@ const ProductForm = () => {
         const product = response.data;
         
         console.log('Product data:', product);
+        
+        // Set product images after product is defined
         if (product.images && Array.isArray(product.images)) {
           setProductImages(product.images);
         }
@@ -313,7 +313,7 @@ const ProductForm = () => {
       varBCode: variantToEdit.varBCode || '',
       varPrice: String(variantToEdit.varPrice) || '99.99',
       quantity: String(variantToEdit.quantity || variantToEdit.invQty || 10),
-      varID: variantToEdit.varID 
+      varID: variantToEdit.varID // Preserve the ID if it exists
     });
     setEditingVariantIndex(index);
     setShowVariantForm(true);
@@ -369,6 +369,7 @@ const ProductForm = () => {
       setVariants(updatedVariants);
       setEditingVariantIndex(null);
     } else {
+      // Add new variant
       setVariants([...variants, variantToAdd]);
     }
     
@@ -390,9 +391,12 @@ const ProductForm = () => {
     const updatedVariants = [...variants];
     updatedVariants.splice(index, 1);
     setVariants(updatedVariants);
+    
+    // If we're currently editing this variant, cancel the edit
     if (editingVariantIndex === index) {
       cancelEditingVariant();
     } else if (editingVariantIndex !== null && editingVariantIndex > index) {
+      // Adjust the editing index if we removed a variant before it
       setEditingVariantIndex(editingVariantIndex - 1);
     }
   };
@@ -452,10 +456,12 @@ const ProductForm = () => {
       setVariantsToDelete([]);
 
       if (isEditMode) {
+        // Reload the current product page after update
         setTimeout(() => {
           window.location.reload();
         }, 2000);
       } else {
+        // Navigate to product list after creating a new product
         setTimeout(() => {
           navigate('/admin/products');
         }, 2000);
@@ -680,6 +686,15 @@ const ProductForm = () => {
                   type="button" 
                   className="add-variant-button"
                   onClick={addVariant}
+                  style={{
+                    backgroundColor: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: '500'
+                  }}
                 >
                   {editingVariantIndex !== null ? 'Update Variant' : 'Add Variant'}
                 </button>
