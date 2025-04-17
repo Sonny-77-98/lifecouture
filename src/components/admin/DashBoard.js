@@ -26,7 +26,7 @@ const Dashboard = () => {
 
         const lowStockRes = await axios.get('/api/inventory/low-stock');
 
-        const orderCount = await axios.get('/api/orders/count');
+        const orderCount = await axios.get('/api/orders');
       
         
         setStats({

@@ -1,137 +1,269 @@
-/* src/style/UserAddresses.css */
 .user-addresses-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    font-family: Arial, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.addresses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.addresses-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.back-link {
+  color: #2196f3;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #0d8aee;
+  text-decoration: underline;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid #c62828;
+}
+
+.add-address-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.add-address-button:hover {
+  background-color: #388E3C;
+}
+
+/* Address form styles */
+.address-form-container {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.address-form-container h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 10px;
+}
+
+.address-form {
+  display: grid;
+  gap: 15px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-group.checkbox-group label {
+  display: flex;
+  align-items: center;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.form-group.checkbox-group input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+input[type="text"],
+select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+select:focus {
+  border-color: #2196f3;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.submit-button,
+.cancel-button {
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border: none;
+}
+
+.submit-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.submit-button:hover {
+  background-color: #388E3C;
+}
+
+.cancel-button {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.cancel-button:hover {
+  background-color: #e0e0e0;
+}
+
+/* Addresses list styles */
+.addresses-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.address-card {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.address-type {
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.default-badge {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.address-content {
+  flex-grow: 1;
+  margin-bottom: 15px;
+}
+
+.address-content p {
+  margin: 5px 0;
+  color: #555;
+}
+
+.address-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.default-button,
+.delete-button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s;
+}
+
+.default-button {
+  background-color: #2196f3;
+  color: white;
+}
+
+.default-button:hover {
+  background-color: #1976d2;
+}
+
+.delete-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f;
+}
+
+.no-addresses {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 30px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  color: #666;
+}
+
+.loading-indicator {
+  text-align: center;
+  padding: 40px;
+  font-size: 16px;
+  color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1920px) {
+  .addresses-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-  }
-  
-  .page-header h2 {
-    margin: 0;
-    color: #333;
-  }
-  
-  .back-link {
-    color: #2196f3;
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-  
-  .back-link:hover {
-    color: #0d8aee;
-    text-decoration: underline;
-  }
-  
-  .error-message {
-    padding: 12px 15px;
-    border-radius: 6px;
-    margin-bottom: 20px;
-    background-color: #ffebee;
-    color: #c62828;
-    border-left: 4px solid #c62828;
-  }
-  
-  .auth-error-message {
-    background-color: #ffeeee;
-    border-left: 4px solid #e53935;
-    padding: 15px 20px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-  }
-  
-  .auth-error-message p {
-    color: #d32f2f;
-    margin-bottom: 15px;
-  }
-  
-  .login-link {
-    display: inline-block;
-    background-color: #2196f3;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: background-color 0.2s;
-  }
-  
-  .login-link:hover {
-    background-color: #1976d2;
-    text-decoration: none;
-  }
-  
-  .addresses-actions {
-    margin-bottom: 20px;
-  }
-  
-  .add-address-button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 10px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    font-size: 14px;
-    font-weight: 500;
-  }
-  
-  .add-address-button:hover {
-    background-color: #388E3C;
-  }
-  
-  .no-addresses {
-    text-align: center;
-    padding: 40px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    color: #6c757d;
-    margin-bottom: 20px;
+  .form-row {
+    grid-template-columns: 1fr;
   }
   
   .addresses-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: 1fr;
   }
-  
-  .address-card {
-    position: relative;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    padding: 20px;
-    border: 1px solid #dee2e6;
-    overflow: hidden;
-  }
-  
-  .default-address {
-    border: 2px solid #4CAF50;
-  }
-  
-  .default-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: #4CAF50;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  
-  .address-type {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 10px;
-    font-size: 16px;
-  }
-  
+}

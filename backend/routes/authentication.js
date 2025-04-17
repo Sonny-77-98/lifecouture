@@ -21,7 +21,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'lifecouture_admin_default_secret';
 console.log(`JWT_SECRET from env: ${process.env.JWT_SECRET ? 'Found' : 'Not found'}`);
 console.log(`Using JWT_SECRET: ${(process.env.JWT_SECRET || 'default').substring(0, 3)}...`);
 
-// Database connection
 const dbConfig = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
