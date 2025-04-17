@@ -8,6 +8,63 @@ const ProductForm = () => {
   const navigate = useNavigate();
   const isEditMode = !!id;
   
+  // Add custom styles to the component
+  const variantTableStyles = `
+    .variant-images-thumbnail {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .variant-thumbnail {
+      width: 30px;
+      height: 30px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    .image-count {
+      background-color: #f0f0f0;
+      border-radius: 10px;
+      padding: 2px 6px;
+      font-size: 12px;
+      color: #555;
+    }
+    
+    .no-images {
+      color: #999;
+      font-style: italic;
+      font-size: 0.9em;
+    }
+    
+    .add-variant-button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    
+    .add-variant-button:hover {
+      background-color: #388E3C;
+    }
+  `;
+
+  // Add the styles to the document head
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = variantTableStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+  
   const [formData, setFormData] = useState({
     prodTitle: '',
     prodDesc: '',
@@ -26,6 +83,7 @@ const ProductForm = () => {
   // State for variant management
   const [showVariantForm, setShowVariantForm] = useState(false);
   const [variants, setVariants] = useState([]);
+  const [editingVariantIndex, setEditingVariantIndex] = useState(null);
   const [newVariant, setNewVariant] = useState({
     varSKU: '',
     varBCode: '',
@@ -228,8 +286,7 @@ const ProductForm = () => {
         setProductImages(updatedImages);
       }
     }
-  }
-
+  };
 
   const handleVariantChange = (e) => {
     const { name, value } = e.target;
@@ -251,6 +308,29 @@ const ProductForm = () => {
     setNewVariant(prev => ({ ...prev, varSKU: sku }));
   };
   
+  const startEditingVariant = (index) => {
+    const variantToEdit = variants[index];
+    setNewVariant({
+      varSKU: variantToEdit.varSKU || '',
+      varBCode: variantToEdit.varBCode || '',
+      varPrice: String(variantToEdit.varPrice) || '99.99',
+      quantity: String(variantToEdit.quantity || variantToEdit.invQty || 10),
+      varID: variantToEdit.varID // Preserve the ID if it exists
+    });
+    setEditingVariantIndex(index);
+    setShowVariantForm(true);
+  };
+  
+  const cancelEditingVariant = () => {
+    setNewVariant({
+      varSKU: '',
+      varBCode: '',
+      varPrice: '99.99',
+      quantity: '10'
+    });
+    setEditingVariantIndex(null);
+  };
+  
   const addVariant = () => {
     if (!newVariant.varSKU.trim()) {
       alert('Please enter a SKU for this variant');
@@ -262,7 +342,12 @@ const ProductForm = () => {
       return;
     }
 
-    const duplicateSKU = variants.some(v => 
+    // Check for duplicate SKU but exclude the current editing variant
+    const otherVariants = editingVariantIndex !== null 
+      ? variants.filter((_, idx) => idx !== editingVariantIndex) 
+      : variants;
+    
+    const duplicateSKU = otherVariants.some(v => 
       v.varSKU.toLowerCase() === newVariant.varSKU.toLowerCase()
     );
     
@@ -273,16 +358,31 @@ const ProductForm = () => {
     
     const variantToAdd = {
       ...newVariant,
-      tempId: Date.now()
+      tempId: newVariant.varID ? null : Date.now()
     };
     
-    setVariants([...variants, variantToAdd]);
+    if (editingVariantIndex !== null) {
+      // Update existing variant
+      const updatedVariants = [...variants];
+      updatedVariants[editingVariantIndex] = {
+        ...updatedVariants[editingVariantIndex],
+        ...variantToAdd
+      };
+      setVariants(updatedVariants);
+      setEditingVariantIndex(null);
+    } else {
+      // Add new variant
+      setVariants([...variants, variantToAdd]);
+    }
+    
     setNewVariant({
       varSKU: '',
       varBCode: '',
       varPrice: '99.99',
       quantity: '10'
     });
+    
+    setShowVariantForm(false);
   };
   
   const removeVariant = (index) => {
@@ -293,6 +393,14 @@ const ProductForm = () => {
     const updatedVariants = [...variants];
     updatedVariants.splice(index, 1);
     setVariants(updatedVariants);
+    
+    // If we're currently editing this variant, cancel the edit
+    if (editingVariantIndex === index) {
+      cancelEditingVariant();
+    } else if (editingVariantIndex !== null && editingVariantIndex > index) {
+      // Adjust the editing index if we removed a variant before it
+      setEditingVariantIndex(editingVariantIndex - 1);
+    }
   };
   
   // Form submission
@@ -320,7 +428,7 @@ const ProductForm = () => {
           varSKU: variant.varSKU,
           varBCode: variant.varBCode,
           varPrice: parseFloat(variant.varPrice),
-          quantity: parseInt(variant.quantity),
+          quantity: parseInt(variant.quantity || variant.invQty || 0),
         })),
         variantsToDelete: variantsToDelete 
       };
@@ -349,9 +457,17 @@ const ProductForm = () => {
       }
       setVariantsToDelete([]);
 
-      setTimeout(() => {
-        navigate('/admin/products');
-      }, 2000);
+      if (isEditMode) {
+        // Reload the current product page after update
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        // Navigate to product list after creating a new product
+        setTimeout(() => {
+          navigate('/admin/products');
+        }, 2000);
+      }
       
     } catch (err) {
       console.error('Error saving product:', err);
@@ -488,9 +604,16 @@ const ProductForm = () => {
             <button 
               type="button" 
               className="toggle-button"
-              onClick={() => setShowVariantForm(!showVariantForm)}
+              onClick={() => {
+                if (showVariantForm && editingVariantIndex !== null) {
+                  cancelEditingVariant();
+                }
+                setShowVariantForm(!showVariantForm);
+              }}
             >
-              {showVariantForm ? 'Hide Variant Form' : 'Add New Variant'}
+              {showVariantForm ? 
+                (editingVariantIndex !== null ? 'Cancel Editing' : 'Hide Variant Form') : 
+                'Add New Variant'}
             </button>
           </div>
           
@@ -560,13 +683,25 @@ const ProductForm = () => {
                 </div>
               </div>
               
-              <button 
-                type="button" 
-                className="add-variant-button"
-                onClick={addVariant}
-              >
-                Add Variant
-              </button>
+              <div className="variant-form-actions">
+                <button 
+                  type="button" 
+                  className="add-variant-button"
+                  onClick={addVariant}
+                >
+                  {editingVariantIndex !== null ? 'Update Variant' : 'Add Variant'}
+                </button>
+                
+                {editingVariantIndex !== null && (
+                  <button 
+                    type="button" 
+                    className="cancel-button"
+                    onClick={cancelEditingVariant}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
           )}
           
@@ -576,28 +711,61 @@ const ProductForm = () => {
                 <thead>
                   <tr>
                     <th>SKU</th>
+                    <th>Barcode</th>
+                    <th>Associated Images</th>
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {variants.map((variant, index) => (
-                    <tr key={variant.varID || variant.tempId || index}>
-                      <td>{variant.varSKU}</td>
-                      <td>${parseFloat(variant.varPrice).toFixed(2)}</td>
-                      <td>{variant.quantity || variant.invQty || 0}</td>
-                      <td className="actions-cell">
-                        <button
-                          type="button"
-                          className="remove-button"
-                          onClick={() => removeVariant(index)}
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {variants.map((variant, index) => {
+                    // Find associated images for this variant
+                    const associatedImages = productImages.filter(img => img.varID === variant.varID);
+                    
+                    return (
+                      <tr key={variant.varID || variant.tempId || index}>
+                        <td>{variant.varSKU}</td>
+                        <td>{variant.varBCode || 'N/A'}</td>
+                        <td>
+                          {associatedImages.length > 0 ? (
+                            <div className="variant-images-thumbnail">
+                              {associatedImages.map((img, imgIndex) => (
+                                <img 
+                                  key={imgIndex}
+                                  src={img.imgURL} 
+                                  alt={img.imgAlt || variant.varSKU}
+                                  className="variant-thumbnail"
+                                  onError={(e) => {e.target.src = "https://i.imgur.com/O4L5Wbf.jpeg"}}
+                                />
+                              ))}
+                              <span className="image-count">{associatedImages.length}</span>
+                            </div>
+                          ) : (
+                            <span className="no-images">No images</span>
+                          )}
+                        </td>
+                        <td>${parseFloat(variant.varPrice).toFixed(2)}</td>
+                        <td>{variant.quantity || variant.invQty || 0}</td>
+                        <td className="actions-cell">
+                          <button
+                            type="button"
+                            className="edit-button"
+                            onClick={() => startEditingVariant(index)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="remove-button"
+                            onClick={() => removeVariant(index)}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
