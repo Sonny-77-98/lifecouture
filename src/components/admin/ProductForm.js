@@ -8,6 +8,63 @@ const ProductForm = () => {
   const navigate = useNavigate();
   const isEditMode = !!id;
   
+  // Add custom styles to the component
+  const variantTableStyles = `
+    .variant-images-thumbnail {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .variant-thumbnail {
+      width: 30px;
+      height: 30px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    .image-count {
+      background-color: #f0f0f0;
+      border-radius: 10px;
+      padding: 2px 6px;
+      font-size: 12px;
+      color: #555;
+    }
+    
+    .no-images {
+      color: #999;
+      font-style: italic;
+      font-size: 0.9em;
+    }
+    
+    .add-variant-button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    
+    .add-variant-button:hover {
+      background-color: #388E3C;
+    }
+  `;
+
+  // Add the styles to the document head
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = variantTableStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+  
   const [formData, setFormData] = useState({
     prodTitle: '',
     prodDesc: '',
@@ -20,16 +77,17 @@ const ProductForm = () => {
   const [newImage, setNewImage] = useState({ 
     imgURL: '', 
     imgAlt: '', 
-    varID: '' | null  
+    varID: null  
   });
   
   // State for variant management
   const [showVariantForm, setShowVariantForm] = useState(false);
   const [variants, setVariants] = useState([]);
+  const [editingVariantIndex, setEditingVariantIndex] = useState(null);
   const [newVariant, setNewVariant] = useState({
     varSKU: '',
     varBCode: '',
-    varPrice: '83.54',
+    varPrice: '99.99',
     size: '',
     color: '',
     quantity: '10'
@@ -40,12 +98,8 @@ const ProductForm = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [variantsToDelete, setVariantsToDelete] = useState([]);
 
-  // Standard size and color options
-  const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'One Size'];
-  const colorOptions = ['Black', 'White', 'Gray', 'Navy', 'Red', 'Blue', 'Green'];
-
-  // Status options
   const statusOptions = [
     'active',
     'inactive',
@@ -79,8 +133,6 @@ const ProductForm = () => {
         const product = response.data;
         
         console.log('Product data:', product);
-        
-        // Set product images after product is defined
         if (product.images && Array.isArray(product.images)) {
           setProductImages(product.images);
         }
@@ -147,9 +199,13 @@ const ProductForm = () => {
     const { name, value } = e.target;
     
     if (name === 'varID') {
-      console.log(`Variant selection changed to: ${value === '' ? 'NONE/NULL' : value}`);
-      const varID = value === '' ? null : value;
-      setNewImage(prev => ({ ...prev, varID }));
+      const varID = value === '' ? null : parseInt(value, 10);
+      if (value !== '' && isNaN(varID)) {
+        console.error('Invalid variant ID:', value);
+        setNewImage(prev => ({ ...prev, varID: null }));
+      } else {
+        setNewImage(prev => ({ ...prev, varID }));
+      }
     } else {
       setNewImage(prev => ({ ...prev, [name]: value }));
     }
@@ -160,13 +216,7 @@ const ProductForm = () => {
       alert('Please enter an image URL');
       return;
     }
-
-    console.log('Adding image with data:', {
-      imgURL: newImage.imgURL,
-      imgAlt: newImage.imgAlt,
-      varID: newImage.varID === '' ? 'EMPTY STRING' : newImage.varID
-    });
-    
+  
     try {
       if (isEditMode && id) {
         const response = await axios.post(`/api/products/${id}/images`, {
@@ -174,8 +224,15 @@ const ProductForm = () => {
           imgAlt: newImage.imgAlt,
           varID: newImage.varID
         });
-
-        setProductImages([...productImages, response.data]);
+        if (response && response.data) {
+          setProductImages([...productImages, response.data]);
+        } else {
+          const tempImage = {
+            ...newImage,
+            tempId: Date.now()
+          };
+          setProductImages([...productImages, tempImage]);
+        }
       } else {
         const imageToAdd = {
           ...newImage,
@@ -191,7 +248,19 @@ const ProductForm = () => {
       });
     } catch (error) {
       console.error('Error adding image:', error);
-      alert('Failed to add image: ' + (error.response?.data?.message || error.message));
+      const imageToAdd = {
+        ...newImage,
+        tempId: Date.now()
+      };
+      setProductImages([...productImages, imageToAdd]);
+
+      setNewImage({ 
+        imgURL: '', 
+        imgAlt: '', 
+        varID: null
+      });
+
+      alert('The image was added locally but there was an issue saving to the database. It will be saved when you update the product.');
     }
   };
 
@@ -208,9 +277,14 @@ const ProductForm = () => {
     } catch (error) {
       console.error('Error removing image:', error);
       alert('Failed to remove image: ' + (error.response?.data?.message || error.message));
+
+      if (!isEditMode || !imageToRemove.imgID) {
+        const updatedImages = [...productImages];
+        updatedImages.splice(index, 1);
+        setProductImages(updatedImages);
+      }
     }
   };
-
 
   const handleVariantChange = (e) => {
     const { name, value } = e.target;
@@ -226,12 +300,33 @@ const ProductForm = () => {
     const productPrefix = formData.prodTitle
       .slice(0, 3)
       .toUpperCase();
+    const uniqueId = Date.now().toString().slice(-4);
     
-    const size = newVariant.size || 'OS';
-    const color = newVariant.color ? newVariant.color.slice(0, 3).toUpperCase() : 'STD';
-    
-    const sku = `${productPrefix}-${size}-${color}`;
+    const sku = `${productPrefix}-${uniqueId}`;
     setNewVariant(prev => ({ ...prev, varSKU: sku }));
+  };
+  
+  const startEditingVariant = (index) => {
+    const variantToEdit = variants[index];
+    setNewVariant({
+      varSKU: variantToEdit.varSKU || '',
+      varBCode: variantToEdit.varBCode || '',
+      varPrice: String(variantToEdit.varPrice) || '99.99',
+      quantity: String(variantToEdit.quantity || variantToEdit.invQty || 10),
+      varID: variantToEdit.varID 
+    });
+    setEditingVariantIndex(index);
+    setShowVariantForm(true);
+  };
+  
+  const cancelEditingVariant = () => {
+    setNewVariant({
+      varSKU: '',
+      varBCode: '',
+      varPrice: '99.99',
+      quantity: '10'
+    });
+    setEditingVariantIndex(null);
   };
   
   const addVariant = () => {
@@ -244,31 +339,62 @@ const ProductForm = () => {
       alert('Please enter a price for this variant');
       return;
     }
+
+    // Check for duplicate SKU but exclude the current editing variant
+    const otherVariants = editingVariantIndex !== null 
+      ? variants.filter((_, idx) => idx !== editingVariantIndex) 
+      : variants;
+    
+    const duplicateSKU = otherVariants.some(v => 
+      v.varSKU.toLowerCase() === newVariant.varSKU.toLowerCase()
+    );
+    
+    if (duplicateSKU) {
+      alert(`A variant with SKU "${newVariant.varSKU}" already exists.`);
+      return;
+    }
     
     const variantToAdd = {
       ...newVariant,
-      tempId: Date.now(),
-      attributes: [
-        { name: 'Size', value: newVariant.size },
-        { name: 'Color', value: newVariant.color }
-      ]
+      tempId: newVariant.varID ? null : Date.now()
     };
     
-    setVariants([...variants, variantToAdd]);
+    if (editingVariantIndex !== null) {
+      // Update existing variant
+      const updatedVariants = [...variants];
+      updatedVariants[editingVariantIndex] = {
+        ...updatedVariants[editingVariantIndex],
+        ...variantToAdd
+      };
+      setVariants(updatedVariants);
+      setEditingVariantIndex(null);
+    } else {
+      setVariants([...variants, variantToAdd]);
+    }
+    
     setNewVariant({
       varSKU: '',
       varBCode: '',
-      varPrice: '83.54',
-      size: '',
-      color: '',
+      varPrice: '99.99',
       quantity: '10'
     });
+    
+    setShowVariantForm(false);
   };
   
   const removeVariant = (index) => {
+    const variantToRemove = variants[index];  
+    if (variantToRemove.varID) {
+      setVariantsToDelete(prev => [...prev, variantToRemove.varID]);
+    }
     const updatedVariants = [...variants];
     updatedVariants.splice(index, 1);
     setVariants(updatedVariants);
+    if (editingVariantIndex === index) {
+      cancelEditingVariant();
+    } else if (editingVariantIndex !== null && editingVariantIndex > index) {
+      setEditingVariantIndex(editingVariantIndex - 1);
+    }
   };
   
   // Form submission
@@ -292,15 +418,13 @@ const ProductForm = () => {
           varID: image.varID || null
         })),
         variants: variants.map(variant => ({
+          varID: variant.varID || null, 
           varSKU: variant.varSKU,
           varBCode: variant.varBCode,
           varPrice: parseFloat(variant.varPrice),
-          quantity: parseInt(variant.quantity),
-          attributes: [
-            { attID: 1, attValue: variant.size },
-            { attID: 2, attValue: variant.color }
-          ]
-        }))
+          quantity: parseInt(variant.quantity || variant.invQty || 0),
+        })),
+        variantsToDelete: variantsToDelete 
       };
       
       console.log('Submitting product data:', productData);
@@ -325,10 +449,17 @@ const ProductForm = () => {
         setProductImages([]);
         setVariants([]);
       }
-      
-      setTimeout(() => {
-        navigate('/admin/products');
-      }, 2000);
+      setVariantsToDelete([]);
+
+      if (isEditMode) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setTimeout(() => {
+          navigate('/admin/products');
+        }, 2000);
+      }
       
     } catch (err) {
       console.error('Error saving product:', err);
@@ -465,9 +596,16 @@ const ProductForm = () => {
             <button 
               type="button" 
               className="toggle-button"
-              onClick={() => setShowVariantForm(!showVariantForm)}
+              onClick={() => {
+                if (showVariantForm && editingVariantIndex !== null) {
+                  cancelEditingVariant();
+                }
+                setShowVariantForm(!showVariantForm);
+              }}
             >
-              {showVariantForm ? 'Hide Variant Form' : 'Add New Variant'}
+              {showVariantForm ? 
+                (editingVariantIndex !== null ? 'Cancel Editing' : 'Hide Variant Form') : 
+                'Add New Variant'}
             </button>
           </div>
           
@@ -507,39 +645,7 @@ const ProductForm = () => {
                   />
                 </div>
               </div>
-              
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="size">Size*</label>
-                  <select
-                    id="size"
-                    name="size"
-                    value={newVariant.size}
-                    onChange={handleVariantChange}
-                  >
-                    <option value="">Select Size</option>
-                    {sizeOptions.map(size => (
-                      <option key={size} value={size}>{size}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="color">Color*</label>
-                  <select
-                    id="color"
-                    name="color"
-                    value={newVariant.color}
-                    onChange={handleVariantChange}
-                  >
-                    <option value="">Select Color</option>
-                    {colorOptions.map(color => (
-                      <option key={color} value={color}>{color}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
+                           
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="varPrice">Price ($)*</label>
@@ -569,13 +675,25 @@ const ProductForm = () => {
                 </div>
               </div>
               
-              <button 
-                type="button" 
-                className="add-variant-button"
-                onClick={addVariant}
-              >
-                Add Variant
-              </button>
+              <div className="variant-form-actions">
+                <button 
+                  type="button" 
+                  className="add-variant-button"
+                  onClick={addVariant}
+                >
+                  {editingVariantIndex !== null ? 'Update Variant' : 'Add Variant'}
+                </button>
+                
+                {editingVariantIndex !== null && (
+                  <button 
+                    type="button" 
+                    className="cancel-button"
+                    onClick={cancelEditingVariant}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
           )}
           
@@ -585,32 +703,61 @@ const ProductForm = () => {
                 <thead>
                   <tr>
                     <th>SKU</th>
-                    <th>Size</th>
-                    <th>Color</th>
+                    <th>Barcode</th>
+                    <th>Associated Images</th>
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {variants.map((variant, index) => (
-                    <tr key={variant.varID || variant.tempId || index}>
-                      <td>{variant.varSKU}</td>
-                      <td>{variant.size || variant.attributes?.find(a => a.name === 'Size')?.value || 'N/A'}</td>
-                      <td>{variant.color || variant.attributes?.find(a => a.name === 'Color')?.value || 'N/A'}</td>
-                      <td>${parseFloat(variant.varPrice).toFixed(2)}</td>
-                      <td>{variant.quantity || variant.invQty || 0}</td>
-                      <td className="actions-cell">
-                        <button
-                          type="button"
-                          className="remove-button"
-                          onClick={() => removeVariant(index)}
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {variants.map((variant, index) => {
+                    // Find associated images for this variant
+                    const associatedImages = productImages.filter(img => img.varID === variant.varID);
+                    
+                    return (
+                      <tr key={variant.varID || variant.tempId || index}>
+                        <td>{variant.varSKU}</td>
+                        <td>{variant.varBCode || 'N/A'}</td>
+                        <td>
+                          {associatedImages.length > 0 ? (
+                            <div className="variant-images-thumbnail">
+                              {associatedImages.map((img, imgIndex) => (
+                                <img 
+                                  key={imgIndex}
+                                  src={img.imgURL} 
+                                  alt={img.imgAlt || variant.varSKU}
+                                  className="variant-thumbnail"
+                                  onError={(e) => {e.target.src = "https://i.imgur.com/O4L5Wbf.jpeg"}}
+                                />
+                              ))}
+                              <span className="image-count">{associatedImages.length}</span>
+                            </div>
+                          ) : (
+                            <span className="no-images">No images</span>
+                          )}
+                        </td>
+                        <td>${parseFloat(variant.varPrice).toFixed(2)}</td>
+                        <td>{variant.quantity || variant.invQty || 0}</td>
+                        <td className="actions-cell">
+                          <button
+                            type="button"
+                            className="edit-button"
+                            onClick={() => startEditingVariant(index)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="remove-button"
+                            onClick={() => removeVariant(index)}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -685,17 +832,17 @@ const ProductForm = () => {
             <div className="form-group">
               <label htmlFor="varID">Associate with Variant</label>
               <select
-                id="varID"
-                name="varID"
-                value={newImage.varID}
-                onChange={handleImageChange}
-              >
-                <option value="">Not associated with a variant</option>
-                {variants.map(variant => (
-                  <option key={variant.varID || variant.tempId} value={variant.varID || variant.tempId}>
-                    {variant.varSKU || `Variant ${variant.varID || 'New'}`}
-                  </option>
-                ))}
+                  id="varID"
+                  name="varID"
+                  value={newImage.varID || ''}
+                  onChange={handleImageChange}
+                >
+                  <option value="">Not associated with a variant</option>
+                  {variants.map(variant => (
+                    <option key={variant.varID || variant.tempId} value={variant.varID || ''}>
+                      {variant.varSKU || `Variant ${variant.varID || 'New'}`}
+                    </option>
+                  ))}
               </select>
             </div>
             
