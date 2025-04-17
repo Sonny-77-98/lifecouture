@@ -7,61 +7,6 @@ const ProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = !!id;
-  const variantTableStyles = `
-    .variant-images-thumbnail {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    .variant-thumbnail {
-      width: 30px;
-      height: 30px;
-      object-fit: cover;
-      border-radius: 4px;
-      border: 1px solid #ddd;
-    }
-    
-    .image-count {
-      background-color: #f0f0f0;
-      border-radius: 10px;
-      padding: 2px 6px;
-      font-size: 12px;
-      color: #555;
-    }
-    
-    .no-images {
-      color: #999;
-      font-style: italic;
-      font-size: 0.9em;
-    }
-    
-    .add-variant-button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background-color 0.2s;
-    }
-    
-    .add-variant-button:hover {
-      background-color: #388E3C;
-    }
-  `;
-
-  // Add the styles to the document head
-  useEffect(() => {
-    const styleElement = document.createElement('style');
-    styleElement.innerHTML = variantTableStyles;
-    document.head.appendChild(styleElement);
-    
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
   
   const [formData, setFormData] = useState({
     prodTitle: '',
@@ -686,15 +631,6 @@ const ProductForm = () => {
                   type="button" 
                   className="add-variant-button"
                   onClick={addVariant}
-                  style={{
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
                 >
                   {editingVariantIndex !== null ? 'Update Variant' : 'Add Variant'}
                 </button>
