@@ -8,63 +8,6 @@ const ProductForm = () => {
   const navigate = useNavigate();
   const isEditMode = !!id;
   
-  // Add custom styles to the component
-  const variantTableStyles = `
-    .variant-images-thumbnail {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    .variant-thumbnail {
-      width: 30px;
-      height: 30px;
-      object-fit: cover;
-      border-radius: 4px;
-      border: 1px solid #ddd;
-    }
-    
-    .image-count {
-      background-color: #f0f0f0;
-      border-radius: 10px;
-      padding: 2px 6px;
-      font-size: 12px;
-      color: #555;
-    }
-    
-    .no-images {
-      color: #999;
-      font-style: italic;
-      font-size: 0.9em;
-    }
-    
-    .add-variant-button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background-color 0.2s;
-    }
-    
-    .add-variant-button:hover {
-      background-color: #388E3C;
-    }
-  `;
-
-  // Add the styles to the document head
-  useEffect(() => {
-    const styleElement = document.createElement('style');
-    styleElement.innerHTML = variantTableStyles;
-    document.head.appendChild(styleElement);
-    
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
-  
   const [formData, setFormData] = useState({
     prodTitle: '',
     prodDesc: '',
@@ -133,6 +76,8 @@ const ProductForm = () => {
         const product = response.data;
         
         console.log('Product data:', product);
+        
+        // Set product images after product is defined
         if (product.images && Array.isArray(product.images)) {
           setProductImages(product.images);
         }
@@ -313,7 +258,7 @@ const ProductForm = () => {
       varBCode: variantToEdit.varBCode || '',
       varPrice: String(variantToEdit.varPrice) || '99.99',
       quantity: String(variantToEdit.quantity || variantToEdit.invQty || 10),
-      varID: variantToEdit.varID 
+      varID: variantToEdit.varID // Preserve the ID if it exists
     });
     setEditingVariantIndex(index);
     setShowVariantForm(true);
@@ -369,6 +314,7 @@ const ProductForm = () => {
       setVariants(updatedVariants);
       setEditingVariantIndex(null);
     } else {
+      // Add new variant
       setVariants([...variants, variantToAdd]);
     }
     
@@ -390,9 +336,12 @@ const ProductForm = () => {
     const updatedVariants = [...variants];
     updatedVariants.splice(index, 1);
     setVariants(updatedVariants);
+    
+    // If we're currently editing this variant, cancel the edit
     if (editingVariantIndex === index) {
       cancelEditingVariant();
     } else if (editingVariantIndex !== null && editingVariantIndex > index) {
+      // Adjust the editing index if we removed a variant before it
       setEditingVariantIndex(editingVariantIndex - 1);
     }
   };
@@ -452,10 +401,12 @@ const ProductForm = () => {
       setVariantsToDelete([]);
 
       if (isEditMode) {
+        // Reload the current product page after update
         setTimeout(() => {
           window.location.reload();
         }, 2000);
       } else {
+        // Navigate to product list after creating a new product
         setTimeout(() => {
           navigate('/admin/products');
         }, 2000);
@@ -712,7 +663,6 @@ const ProductForm = () => {
                 </thead>
                 <tbody>
                   {variants.map((variant, index) => {
-                    // Find associated images for this variant
                     const associatedImages = productImages.filter(img => img.varID === variant.varID);
                     
                     return (
@@ -830,7 +780,7 @@ const ProductForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="varID">Associate with Variant</label>
+              <label htmlFor="varID">Images Variant</label>
               <select
                   id="varID"
                   name="varID"
