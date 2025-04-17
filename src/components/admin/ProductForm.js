@@ -663,7 +663,6 @@ const ProductForm = () => {
                 </thead>
                 <tbody>
                   {variants.map((variant, index) => {
-                    // Find associated images for this variant
                     const associatedImages = productImages.filter(img => img.varID === variant.varID);
                     
                     return (
@@ -781,7 +780,7 @@ const ProductForm = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="varID">Associate with Variant</label>
+              <label htmlFor="varID">Images Variant</label>
               <select
                   id="varID"
                   name="varID"
