@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import '../../style/ProductList.css';
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
@@ -89,10 +90,10 @@ const ProductList = () => {
   }, [products, searchTerm]);
   
   const getProductImage = useCallback((product) => {
-    if (product.imageUrl) {
-      return product.imageUrl;
+    if (product.prodURL) {
+      return product.prodURL;
     }
-    return "https://i.imgur.com/O4L5Wbf.jpeg";
+    return "https://i.imgur.com/O4L5Wbf.jpeg"; // Default image
   }, []);
   
   const renderStatus = useCallback((status) => {
@@ -212,13 +213,13 @@ const ProductList = () => {
                 <tr key={product.prodID || index}>
                   <td>{product.prodID}</td>
                   <td className="product-image-cell">
-                    <img 
-                      src={getProductImage(product)} 
-                      alt={product.prodTitle || 'Product'} 
-                      width="50" 
-                      height="50" 
-                      onError={(e) => {e.target.src = "https://i.imgur.com/O4L5Wbf.jpeg"}}
-                    />
+                    <div className="product-thumbnail">
+                      <img 
+                        src={getProductImage(product)} 
+                        alt={product.prodTitle || 'Product'} 
+                        onError={(e) => {e.target.src = "https://i.imgur.com/O4L5Wbf.jpeg"}}
+                      />
+                    </div>
                   </td>
                   <td className="product-name-cell">{product.prodTitle}</td>
                   <td className="product-description-cell">

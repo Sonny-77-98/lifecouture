@@ -1,4 +1,3 @@
-// src/components/admin/UserList.js
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -114,8 +113,11 @@ const UserList = () => {
       <div className="list-header">
         <h2>User Management</h2>
         <Link to="/admin/users/create" className="add-user-button">
-          Creae New User
+          Create New User
         </Link>
+      </div>
+      <div className="back-to-dashboard">
+        <Link to="/admin/dashboard">← Back to Dashboard</Link>
       </div>
       
       {error && <div className="error-message">{error}</div>}

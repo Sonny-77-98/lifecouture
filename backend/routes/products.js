@@ -188,6 +188,8 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     let categories = req.body.categories;
     let attributes = req.body.attributes;
+    let variants = req.body.variants || [];
+    let images = req.body.images || [];
     
     if (typeof categories === 'string') {
       try {
@@ -205,15 +207,17 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
     
-    const { prodTitle, prodDesc, prodURL, prodStat, imageUrl, imageAlt } = req.body;
+    const { prodTitle, prodDesc, prodURL, prodStat } = req.body;
     
     if (!prodTitle || !prodDesc) {
       return res.status(400).json({ message: 'Product title and description are required' });
     }
+    
     const { pool } = require('../config/db');
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
+    // Insert the product
     const [productResult] = await connection.execute(
       'INSERT INTO Product (prodTitle, prodDesc, prodURL, prodStat) VALUES (?, ?, ?, ?)',
         [prodTitle, prodDesc, prodURL, prodStat]
@@ -221,13 +225,27 @@ router.post('/', authMiddleware, async (req, res) => {
     
     const productId = productResult.insertId;
 
-    if (imageUrl) {
+    // Insert main product image if provided
+    if (prodURL) {
       await connection.execute(
         'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
-        [imageUrl, imageAlt || prodTitle, productId]
+        [prodURL, prodTitle, productId]
       );
     }
 
+    // Insert additional product images if provided
+    if (images && images.length > 0) {
+      for (const image of images) {
+        if (image.imgURL) {
+          await connection.execute(
+            'INSERT INTO ProductImages (imgURL, imgAlt, prodID) VALUES (?, ?, ?)',
+            [image.imgURL, image.imgAlt || prodTitle, productId]
+          );
+        }
+      }
+    }
+
+    // Insert product categories
     if (categories && categories.length > 0) {
       for (const catID of categories) {
         await connection.execute(
@@ -237,6 +255,7 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
 
+    // Insert product attributes
     if (attributes && Object.keys(attributes).length > 0) {
       for (const [attID, value] of Object.entries(attributes)) {
         if (value) {
@@ -245,6 +264,37 @@ router.post('/', authMiddleware, async (req, res) => {
             [productId, attID, value]
           );
         }
+      }
+    }
+    
+    // Process variants
+    if (variants && variants.length > 0) {
+      for (const variant of variants) {
+        // Insert the variant
+        const [variantResult] = await connection.execute(
+          'INSERT INTO ProductVariants (varSKU, varBCode, prodID, varPrice) VALUES (?, ?, ?, ?)',
+          [variant.varSKU, variant.varBCode || null, productId, parseFloat(variant.varPrice) || 83.54]
+        );
+        
+        const variantId = variantResult.insertId;
+        
+        if (variant.attributes && variant.attributes.length > 0) {
+          for (const attr of variant.attributes) {
+            if (attr.attValue) {
+              await connection.execute(
+                'INSERT INTO VariantAttributesValues (varID, attID, attValue) VALUES (?, ?, ?)',
+                [variantId, attr.attID, attr.attValue]
+              );
+            }
+          }
+        }
+        
+        // Create inventory record for the variant
+        const quantity = parseInt(variant.quantity) || 0;
+        await connection.execute(
+          'INSERT INTO Inventory (invQty, InvLowStockThreshold, varID) VALUES (?, ?, ?)',
+          [quantity, 5, variantId]
+        );
       }
     }
 
@@ -272,8 +322,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
   let connection;
   try {
     let categories = req.body.categories;
-    let attributes = req.body.attributes;
-    
+   
     if (typeof categories === 'string') {
       try {
         categories = JSON.parse(categories);
@@ -281,42 +330,49 @@ router.put('/:id', authMiddleware, async (req, res) => {
         categories = [];
       }
     }
-    
-    if (typeof attributes === 'string') {
-      try {
-        attributes = JSON.parse(attributes);
-      } catch (e) {
-        attributes = {};
-      }
-    }
-    
+   
     const { prodTitle, prodDesc, prodURL, prodStat, imageUrl, imageAlt } = req.body;
     const productId = req.params.id;
-
     if (!prodTitle || !prodDesc) {
       return res.status(400).json({ message: 'Product title and description are required' });
     }
-
     const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
-    
+   
     if (product.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
-
     const { pool } = require('../config/db');
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
+    const variantsToDelete = req.body.variantsToDelete || [];
+    if (variantsToDelete.length > 0) {
+      for (const variantId of variantsToDelete) {
+        await connection.execute(
+          'DELETE FROM Inventory WHERE varID = ?',
+          [variantId]
+        );
+
+        await connection.execute(
+          'DELETE FROM VariantAttributesValues WHERE varID = ?',
+          [variantId]
+        );
+
+        await connection.execute(
+          'DELETE FROM ProductVariants WHERE varID = ?',
+          [variantId]
+        );
+      }
+    }
+    
     await connection.execute(
       'UPDATE Product SET prodTitle = ?, prodDesc = ?, prodURL = ?, prodStat = ? WHERE prodID = ?',
       [prodTitle, prodDesc, prodURL || prodTitle.toLowerCase().replace(/\s+/g, '-'), prodStat || 'active', productId]
     );
-
     if (imageUrl) {
       const images = await connection.execute('SELECT * FROM ProductImages WHERE prodID = ?', [productId]);
-      
+     
       if (images[0].length > 0) {
-
         await connection.execute(
           'UPDATE ProductImages SET imgURL = ? WHERE prodID = ? AND imgID = ?',
           [imageUrl, productId, images[0][0].imgID]
@@ -328,9 +384,38 @@ router.put('/:id', authMiddleware, async (req, res) => {
         );
       }
     }
-    
+    const variants = req.body.variants || [];
+    if (variants && variants.length > 0) {
+      for (const variant of variants) {
+        if (variant.varID) {
+          await connection.execute(
+            'UPDATE ProductVariants SET varSKU = ?, varBCode = ?, varPrice = ? WHERE varID = ?',
+            [variant.varSKU, variant.varBCode || null, parseFloat(variant.varPrice) || 83.54, variant.varID]
+          );
+          if (variant.quantity !== undefined) {
+            await connection.execute(
+              'UPDATE Inventory SET invQty = ? WHERE varID = ?',
+              [parseInt(variant.quantity) || 0, variant.varID]
+            );
+          }
+        } else {
+          const [variantResult] = await connection.execute(
+            'INSERT INTO ProductVariants (varSKU, varBCode, prodID, varPrice) VALUES (?, ?, ?, ?)',
+            [variant.varSKU, variant.varBCode || null, productId, parseFloat(variant.varPrice) || 83.54]
+          );
+         
+          const variantId = variantResult.insertId;
+          const quantity = parseInt(variant.quantity) || 0;
+          await connection.execute(
+            'INSERT INTO Inventory (invQty, InvLowStockThreshold, varID) VALUES (?, ?, ?)',
+            [quantity, 5, variantId]
+          );
+        }
+      }
+    }
+   
     await connection.commit();
-    
+   
     res.json({
       message: 'Product updated successfully',
       productId: productId
@@ -339,7 +424,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (connection) {
       await connection.rollback();
     }
-    
+   
     console.error('Error updating product:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   } finally {
