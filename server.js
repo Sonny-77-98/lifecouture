@@ -3,9 +3,10 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
+const os = require('os');
 
 const app = express();
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 3000;
 
 // Database pool setup
 const pool = mysql.createPool({
@@ -28,7 +29,7 @@ app.use(cors({
 }));
 app.use(express.static(path.join(__dirname, 'build')));
 
-// Routes Setup
+// Routes Setup - Using modular route files
 app.use('/api/inventory', require('./backend/routes/inventory'));
 app.use('/api/auth', require('./backend/routes/authentication').router);
 app.use('/api/categories', require('./backend/routes/categories'));
@@ -51,15 +52,19 @@ app.get('/api/test', async (req, res) => {
 // Fetch US states and tax rates
 app.get('/api/states', async (req, res) => {
   try {
-    const [states] = await pool.query('SELECT stateName, taxRatesA FROM States');
-    res.json(states);
+    const [rows] = await pool.execute('SELECT stateID, stateName, taxRatesA FROM States');
+    
+    console.log('Raw state data from DB:', rows);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(rows));
   } catch (error) {
     console.error('Error fetching states:', error);
     res.status(500).json({ error: 'Failed to fetch states', details: error.message });
   }
 });
 
-// Checkout endpoint
+// Checkout process
 app.post('/api/checkout', async (req, res) => {
   const { items, name, email, phone, address, state, taxRate, shippingCost, totalAmount } = req.body;
   let connection;
@@ -182,13 +187,11 @@ app.delete('/api/cart/:userID/:prodID', async (req, res) => {
   }
 });
 
-// Serve React app for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// Server startup
-const os = require('os');
+// Server startup with IP address detection
 const networkInterfaces = os.networkInterfaces();
 
 let ipAddress;

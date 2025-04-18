@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+//dynamic allocate ip address
+const API_URL = window.location.hostname === 'localhost' 
+  ? `http://${window.location.hostname}:3000` 
+  : '';
+
 function Checkout({ cart, setCart }) {
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
@@ -21,7 +26,7 @@ function Checkout({ cart, setCart }) {
       try {
         const productVariants = await Promise.all(
           cart.map(async (item) => {
-            const response = await fetch(`http://localhost:3001/api/variants/${item.prodID}`);
+            const response = await fetch(`${API_URL}/api/variants/${item.prodID}`);
             if (!response.ok) throw new Error(`Error fetching variants for prodID ${item.prodID}`);
             const data = await response.json();
             return { prodID: item.prodID, variants: data };
@@ -39,11 +44,13 @@ function Checkout({ cart, setCart }) {
 
     const fetchStates = async () => {
       try {
-        const response = await fetch("http://localhost:3001/api/states");
+        const response = await fetch(`${API_URL}/api/states`);
         const data = await response.json();
+        console.log("States data:", data);
         setStates(data);
       } catch (error) {
         console.error("Error fetching states:", error);
+        setStates([]); 
       }
     };
 
@@ -56,10 +63,30 @@ function Checkout({ cart, setCart }) {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCustomerInfo(prev => ({ ...prev, [name]: value }));
-
+  
     if (name === "state") {
-      const selectedState = states.find(s => s.stateName === value);
-      setTaxRate(selectedState ? selectedState.taxRatesA / 100 : 0); // Ensure taxRate is a decimal
+      if (states && Array.isArray(states)) {
+        console.log("States array:", states);
+
+        try {
+          const selectedState = states.find(s => s.stateName === value);
+          console.log("Selected state:", selectedState);
+          if (selectedState && typeof selectedState.taxRatesA !== 'undefined') {
+            const taxRate = parseFloat(selectedState.taxRatesA) / 100;
+            console.log("Setting tax rate to:", taxRate);
+            setTaxRate(taxRate);
+          } else {
+            console.log("No matching state found or missing taxRatesA property");
+            setTaxRate(0);
+          }
+        } catch (error) {
+          console.error("Error while finding state:", error);
+          setTaxRate(0);
+        }
+      } else {
+        console.error("States is not an array:", states);
+        setTaxRate(0);
+      }
     }
   };
 
@@ -114,7 +141,7 @@ function Checkout({ cart, setCart }) {
     };
 
     try {
-      const response = await fetch("http://localhost:3001/api/checkout", {
+      const response = await fetch(`${API_URL}/api/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData)
