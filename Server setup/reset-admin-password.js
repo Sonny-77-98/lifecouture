@@ -22,7 +22,6 @@ async function resetAdminPassword() {
     
     console.log(`Generated new password hash: ${hashedPassword}`);
     
-    // Update admin user password
     const [result] = await connection.execute(
       'UPDATE admin_users SET password = ? WHERE username = ?',
       [hashedPassword, 'admin']
@@ -33,8 +32,7 @@ async function resetAdminPassword() {
       console.log(`Use username: admin and password: ${newPassword} to login`);
     } else {
       console.log('No admin user found. Creating a new admin user...');
-      
-      // Create admin user if it doesn't exist
+
       await connection.execute(
         'INSERT INTO admin_users (username, password, role) VALUES (?, ?, ?)',
         ['admin', hashedPassword, 'admin']
@@ -63,5 +61,4 @@ async function resetAdminPassword() {
   }
 }
 
-// Run the function
 resetAdminPassword();

@@ -238,6 +238,91 @@
     font-size: 16px;
     color: #666;
   }
+  /*Variant Section*/
+  .variants-section {
+    margin-top: 30px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .section-header h3 {
+    margin: 0;
+    color: #333;
+  }
+  
+  .toggle-button {
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+  }
+  
+  .toggle-button:hover {
+    background-color: #0d8aee;
+  }
+  
+  .variant-form {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .input-with-button {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .input-with-button input {
+    flex: 1;
+  }
+  
+  .variants-table-container {
+    margin-bottom: 30px;
+    overflow-x: auto;
+  }
+  
+  .variants-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+  
+  .variants-table th,
+  .variants-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .variants-table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+    color: #444;
+  }
+  
+  .no-variants-message {
+    background-color: #f9f9f9;
+    border: 1px dashed #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    color: #777;
+  }
   
   /* Responsive layout */
   @media (max-width: 768px) {
@@ -264,3 +349,47 @@
       width: 100%;
     }
   }
+
+/* Variant table styles */
+.variant-images-thumbnail {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.variant-thumbnail {
+  width: 30px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.image-count {
+  background-color: #f0f0f0;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: #555;
+}
+
+.no-images {
+  color: #999;
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+.add-variant-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.add-variant-button:hover {
+  background-color: #388E3C;
+}

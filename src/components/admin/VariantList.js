@@ -1,4 +1,3 @@
-// src/components/admin/VariantList.js
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -68,6 +67,10 @@ const VariantList = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
         />
+      </div>
+      
+      <div className="back-to-dashboard">
+        <Link to="/admin/dashboard">← Back to Dashboard</Link>
       </div>
       
       {filteredVariants.length === 0 ? (

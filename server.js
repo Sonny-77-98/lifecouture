@@ -20,7 +20,12 @@ const pool = mysql.createPool({
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+  credentials: true
+}));
 app.use(express.static(path.join(__dirname, 'build')));
 
 // Test route
@@ -90,8 +95,17 @@ app.get('/api/states', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch states', details: error.message });
   }
 });
+=======
+// Routes Setup
+app.use('/api/inventory', require('./backend/routes/inventory'));
+app.use('/api/auth', require('./backend/routes/authentication').router);
+app.use('/api/categories', require('./backend/routes/categories'));
+app.use('/api/products', require('./backend/routes/products'));
+app.use('/api/orders', require('./backend/routes/orders'));
+app.use('/api/users', require('./backend/routes/users'));
+app.use('/api/variants', require('./backend/routes/variants'));
+app.use('/api', require('./backend/routes/productImages'));
 
-// Checkout process
 app.post('/api/checkout', async (req, res) => {
   const { items, name, email, phone, address, state, taxRate, shippingCost, totalAmount } = req.body;
   let connection;
@@ -101,6 +115,7 @@ app.post('/api/checkout', async (req, res) => {
   }
 
   try {
+    let totalAmount = 0;
     for (const item of items) {
       if (!item.varID) throw new Error(`No variant selected for product ${item.prodID}`);
       const [variant] = await pool.query('SELECT varPrice FROM ProductVariants WHERE varID = ? LIMIT 1', [item.varID]);
@@ -113,7 +128,7 @@ app.post('/api/checkout', async (req, res) => {
     const nameParts = name.trim().split(' ');
     const firstName = nameParts.shift() || '';
     const lastName = nameParts.join(' ') || '';
-
+    const [firstName, lastName] = name.split(' ');
     const [userInsert] = await connection.query(
       'INSERT INTO User (usFname, usLname, usEmail, usPNum, usAdID, usPassword, usRole) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [firstName, lastName, email, phone, 1, 'default_placeholder', 'customer']
@@ -197,12 +212,28 @@ app.delete('/api/cart/:userID/:prodID', async (req, res) => {
   }
 });
 
-// Serve React frontend
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
+/*app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
+});*/
+
+/*To find ip address, and expose for connection */
+const os = require('os');
+const networkInterfaces = os.networkInterfaces();
+
+let ipAddress;
+Object.keys(networkInterfaces).forEach(interfaceName => {
+  networkInterfaces[interfaceName].forEach(interface => {
+    if (!interface.internal && interface.family === 'IPv4') {
+      ipAddress = interface.address;
+    }
+  });
+});
+
+app.listen(3000, ipAddress || '127.0.0.1', () => {
+  console.log(`Server running at http://${ipAddress || '127.0.0.1'}:3000`);
 });

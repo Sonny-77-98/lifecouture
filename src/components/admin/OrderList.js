@@ -202,6 +202,9 @@ const OrderList = () => {
           Create New Order
         </Link>
       </div>
+      <div className="back-to-dashboard">
+        <Link to="/admin/dashboard">← Back to Dashboard</Link>
+      </div>
       
       {error && <div className="error-message">{error}</div>}
       {authError && (
