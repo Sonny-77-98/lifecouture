@@ -46,7 +46,7 @@ function App() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const API_URL = process.env.REACT_APP_API_URL || '';;
+        const API_URL = process.env.REACT_APP_API_URL || '';
         
         const url = API_URL ? `${API_URL}/api/products` : '/api/products';
 
@@ -79,6 +79,7 @@ function App() {
     setCart((prevCart) => [...prevCart, product]);
   };
 
+  // Keep this using capital 'A' to match existing URL detection
   const isAdminRoute = window.location.pathname.startsWith('/Admin') || window.location.pathname === '/Login';
 
   const filteredProducts = productList.filter((product) =>
@@ -104,8 +105,9 @@ function App() {
           {!isAdminRoute && <Breadcrumb />}
 
           <Routes>
+            {/* Keep routes using capital letters to maintain consistency */}
             <Route path="/Login" element={<Login />} />
-            <Route path="/Admin" element={<Navigate to="/admin/dashboard" />} />
+            <Route path="/Admin" element={<Navigate to="/Admin/Dashboard" />} />
             <Route path="/Admin/Dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/Admin/Products" element={<PrivateRoute><ProductList /></PrivateRoute>} />
             <Route path="/Admin/Products/Add" element={<PrivateRoute><ProductForm /></PrivateRoute>} />
@@ -114,6 +116,25 @@ function App() {
             <Route path="/Admin/Categories/Add" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
             <Route path="/Admin/Categories/Edit/:id" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
             <Route path="/Admin/Inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
+            
+            {/* Add missing Order routes */}
+            <Route path="/Admin/Orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
+            <Route path="/Admin/Orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
+            <Route path="/Admin/Orders/Edit/:id" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
+            <Route path="/Admin/Orders/Create" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
+            
+            {/* Add missing Variant routes */}
+            <Route path="/Admin/Variants" element={<PrivateRoute><VariantList /></PrivateRoute>} />
+            <Route path="/Admin/Variants/Add" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
+            <Route path="/Admin/Variants/Edit/:id" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
+            
+            {/* Add missing User routes */}
+            <Route path="/Admin/Users" element={<PrivateRoute><UserList /></PrivateRoute>} />
+            <Route path="/Admin/Users/Create" element={<PrivateRoute><UserForm /></PrivateRoute>} />
+            <Route path="/Admin/Users/Edit/:id" element={<PrivateRoute><UserForm /></PrivateRoute>} />
+            <Route path="/Admin/Users/:userId/Addresses" element={<PrivateRoute><UserAddresses /></PrivateRoute>} />
+            
+            {/* Storefront routes */}
             <Route path="/" element={
               <Home
                 productList={filteredProducts}
