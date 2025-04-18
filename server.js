@@ -33,18 +33,46 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
+// Fetch categories
+app.get('/api/categories', async (req, res) => {
+  try {
+    const [categories] = await pool.query('SELECT * FROM Categories');
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Failed to fetch categories', details: error.message });
+  }
+});
+
+// Fetch products (with optional category filter)
+app.get('/api/products', async (req, res) => {
+  const { category } = req.query;
+  try {
+    let products;
+    if (category) {
+      [products] = await pool.query(
+        `SELECT p.* FROM Product p
+         JOIN ProductCategories pc ON p.prodID = pc.prodID
+         WHERE pc.catID = ?`, [category]
+      );
+    } else {
+      [products] = await pool.query('SELECT * FROM Product');
+    }
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ error: 'Failed to fetch products', details: error.message });
+  }
+});
+
 // Fetch variants for a specific product
 app.get('/api/variants/:prodID', async (req, res) => {
   const { prodID } = req.params;
-  if (!prodID) {
-    return res.status(400).json({ message: 'Product ID is required' });
-  }
+  if (!prodID) return res.status(400).json({ message: 'Product ID is required' });
 
   try {
     const [variants] = await pool.query('SELECT * FROM ProductVariants WHERE prodID = ?', [prodID]);
-    if (variants.length === 0) {
-      return res.status(404).json({ message: 'No variants found for this product' });
-    }
+    if (variants.length === 0) return res.status(404).json({ message: 'No variants found for this product' });
     res.json(variants);
   } catch (error) {
     console.error('Error fetching variants:', error);
@@ -52,7 +80,7 @@ app.get('/api/variants/:prodID', async (req, res) => {
   }
 });
 
-// Fetch all US states and their tax rates
+// Fetch US states and tax rates
 app.get('/api/states', async (req, res) => {
   try {
     const [states] = await pool.query('SELECT stateName, taxRatesA FROM States');
@@ -74,14 +102,9 @@ app.post('/api/checkout', async (req, res) => {
 
   try {
     for (const item of items) {
-      if (!item.varID) {
-        throw new Error(`No variant selected for product ${item.prodID}`);
-      }
-
+      if (!item.varID) throw new Error(`No variant selected for product ${item.prodID}`);
       const [variant] = await pool.query('SELECT varPrice FROM ProductVariants WHERE varID = ? LIMIT 1', [item.varID]);
-      if (variant.length === 0) {
-        throw new Error(`Variant ${item.varID} not found.`);
-      }
+      if (variant.length === 0) throw new Error(`Variant ${item.varID} not found.`);
     }
 
     connection = await pool.getConnection();
@@ -95,22 +118,18 @@ app.post('/api/checkout', async (req, res) => {
       'INSERT INTO User (usFname, usLname, usEmail, usPNum, usAdID, usPassword, usRole) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [firstName, lastName, email, phone, 1, 'default_placeholder', 'customer']
     );
-
     const userID = userInsert.insertId;
 
     const [orderResult] = await connection.query(
       'INSERT INTO Orders (userID, orderTotalAmt, orderSTAT, orderCreatedAt, orderUpdatedAt) VALUES (?, ?, "Pending", NOW(), NOW())',
       [userID, totalAmount]
     );
-
     const orderID = orderResult.insertId;
 
     for (const item of items) {
       const [variant] = await connection.query(
-        'SELECT varPrice FROM ProductVariants WHERE varID = ? LIMIT 1',
-        [item.varID]
+        'SELECT varPrice FROM ProductVariants WHERE varID = ? LIMIT 1', [item.varID]
       );
-
       const price = variant[0].varPrice;
       const quantity = item.quantity || 1;
 
@@ -134,21 +153,9 @@ app.post('/api/checkout', async (req, res) => {
   }
 });
 
-// Get all products
-app.get('/api/products', async (req, res) => {
-  try {
-    const [products] = await pool.query('SELECT * FROM Product');
-    res.json(products);
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    res.status(500).json({ error: 'Failed to fetch products', details: error.message });
-  }
-});
-
-// Cart endpoints
+// Cart: add to cart
 app.post('/api/cart', async (req, res) => {
   const { userID, prodID, quantity } = req.body;
-
   if (!userID || !prodID || !quantity) {
     return res.status(400).json({ message: 'Missing userID, prodID, or quantity.' });
   }
@@ -166,6 +173,7 @@ app.post('/api/cart', async (req, res) => {
   }
 });
 
+// Cart: get items
 app.get('/api/cart/:userID', async (req, res) => {
   const { userID } = req.params;
   try {
@@ -177,6 +185,7 @@ app.get('/api/cart/:userID', async (req, res) => {
   }
 });
 
+// Cart: remove item
 app.delete('/api/cart/:userID/:prodID', async (req, res) => {
   const { userID, prodID } = req.params;
   try {
@@ -188,7 +197,7 @@ app.delete('/api/cart/:userID/:prodID', async (req, res) => {
   }
 });
 
-// Serve frontend build fallback
+// Serve React frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
