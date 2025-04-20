@@ -8,10 +8,8 @@ function ProductFilter({ addToCart }) {
   useEffect(() => {
     const fetchCategoriesAndProducts = async () => {
       try {
-        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
-
         // Fetch categories
-        const categoriesRes = await fetch(`${API_URL}/api/categories`);
+        const categoriesRes = await fetch(`/api/categories`);
         const categoriesData = await categoriesRes.json();
         setCategories(categoriesData);
 
@@ -27,15 +25,13 @@ function ProductFilter({ addToCart }) {
 
   const fetchProducts = async (categoryId) => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
-
       let productsRes;
       if (categoryId) {
         // Fetch products filtered by selected category
-        productsRes = await fetch(`${API_URL}/api/products?category=${categoryId}`);
+        productsRes = await fetch(`/api/products?category=${categoryId}`);
       } else {
         // Fetch all products
-        productsRes = await fetch(`${API_URL}/api/products`);
+        productsRes = await fetch(`/api/products`);
       }
 
       const productsData = await productsRes.json();
@@ -69,10 +65,17 @@ function ProductFilter({ addToCart }) {
           products.map((product) => (
             <div className="product-card" key={product.prodID}>
               <div className="product-image">
-                <img src={product.prodURL} alt={product.prodTitle} />
+                <img 
+                  src={product.prodURL} 
+                  alt={product.prodTitle}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://via.placeholder.com/200?text=No+Image";
+                  }}
+                />
               </div>
-              <div>{product.prodTitle}</div>
-              <div>{product.prodDesc}</div>
+              <div className="product-title">{product.prodTitle}</div>
+              <div className="product-desc">{product.prodDesc}</div>
               <button onClick={() => addToCart(product)}>Add to Cart</button>
             </div>
           ))
