@@ -16,7 +16,15 @@ function Cart({ cart, setCart }) {
       ) : (
         cart.map((item, index) => (
           <div key={index} className="cart-item">
-            <img src={item.prodURL} alt={item.prodTitle} className="cart-item-image" />
+            <img 
+              src={item.prodURL} 
+              alt={item.prodTitle} 
+              className="cart-item-image"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "https://via.placeholder.com/200?text=No+Image";
+              }}
+            />
             <div className="cart-item-details">
               <h3 className="cart-item-title">{item.prodTitle}</h3>
               <p className="cart-item-description">{item.prodDesc}</p>

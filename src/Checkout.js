@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-//dynamic allocate ip address
-const API_URL = window.location.hostname === 'localhost' 
-  ? `http://${window.location.hostname}:3000` 
-  : '';
-
 function Checkout({ cart, setCart }) {
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
@@ -16,38 +11,93 @@ function Checkout({ cart, setCart }) {
   });
   const [variants, setVariants] = useState({});
   const [states, setStates] = useState([]);
-  const [taxRate, setTaxRate] = useState(0);  // Tax rate as a decimal
-  const [shippingCost] = useState(6.99); // Static shipping cost
+  const [taxRate, setTaxRate] = useState(0);
+  const [shippingCost] = useState(6.99);
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
+
+  const getApiUrl = (endpoint) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+  };
+
+  const dollarsToCents = (amount) => {
+    return Math.round(parseFloat(amount) * 100);
+  };
 
   useEffect(() => {
     const fetchVariants = async () => {
       try {
-        const productVariants = await Promise.all(
-          cart.map(async (item) => {
-            const response = await fetch(`${API_URL}/api/variants/${item.prodID}`);
-            if (!response.ok) throw new Error(`Error fetching variants for prodID ${item.prodID}`);
+        console.log("Fetching variants for cart items:", cart);
+        const productVariants = {};
+        
+        for (const item of cart) {
+          console.log(`Fetching variants for product ID: ${item.prodID}`);
+          try {
+            const response = await fetch(getApiUrl(`/api/products/${item.prodID}/variants`));
+            
+            if (!response.ok) {
+              console.error(`Error response from API for product ${item.prodID}:`, response.status);
+              continue;
+            }
+            
             const data = await response.json();
-            return { prodID: item.prodID, variants: data };
-          })
-        );
-        const grouped = productVariants.reduce((acc, { prodID, variants }) => {
-          acc[prodID] = variants;
-          return acc;
-        }, {});
-        setVariants(grouped);
+            console.log(`Variants for product ${item.prodID}:`, data);
+            
+            if (Array.isArray(data) && data.length > 0) {
+              productVariants[item.prodID] = data;
+              if (!item.varID && data.length > 0) {
+                const updatedCart = [...cart];
+                const itemIndex = updatedCart.findIndex(cartItem => cartItem.prodID === item.prodID);
+                if (itemIndex !== -1) {
+                  updatedCart[itemIndex] = {
+                    ...updatedCart[itemIndex],
+                    varID: data[0].varID
+                  };
+                  setCart(updatedCart);
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`Error fetching variants for product ${item.prodID}:`, err);
+          }
+        }
+        
+        console.log("All product variants:", productVariants);
+        setVariants(productVariants);
       } catch (error) {
-        console.error("Error fetching variants:", error);
+        console.error("Error in fetchVariants:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     const fetchStates = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/states`);
-        const data = await response.json();
-        console.log("States data:", data);
-        setStates(data);
+        console.log("Fetching states from:", getApiUrl('/api/states'));
+        const response = await fetch(getApiUrl('/api/states'));
+        const rawData = await response.json();
+        console.log("States raw data type:", typeof rawData);
+        console.log("States raw data:", rawData);
+        let statesArray;
+        
+        if (Array.isArray(rawData)) {
+          console.log("Data is an array");
+          statesArray = [...rawData];
+        } else if (typeof rawData === 'object') {
+          console.log("Data is an object, converting to array");
+          statesArray = Object.values(rawData);
+        } else {
+          console.log("Data is neither array nor object");
+          statesArray = [];
+        }
+        
+        console.log("Processed states array:", statesArray);
+        console.log("Is array?", Array.isArray(statesArray));
+        console.log("Length:", statesArray.length);
+        
+        setStates(statesArray);
       } catch (error) {
         console.error("Error fetching states:", error);
         setStates([]); 
@@ -57,34 +107,44 @@ function Checkout({ cart, setCart }) {
     fetchStates();
     if (cart.length > 0) {
       fetchVariants();
+    } else {
+      setLoading(false);
     }
-  }, [cart]);
+  }, [cart, setCart]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCustomerInfo(prev => ({ ...prev, [name]: value }));
   
     if (name === "state") {
-      if (states && Array.isArray(states)) {
-        console.log("States array:", states);
-
+      if (states) {
+        console.log("States data type:", typeof states);
+        console.log("States is array?", Array.isArray(states));
+        console.log("States length:", states.length);
+        let selectedState = null;
         try {
-          const selectedState = states.find(s => s.stateName === value);
-          console.log("Selected state:", selectedState);
-          if (selectedState && typeof selectedState.taxRatesA !== 'undefined') {
-            const taxRate = parseFloat(selectedState.taxRatesA) / 100;
-            console.log("Setting tax rate to:", taxRate);
-            setTaxRate(taxRate);
+          for (let i = 0; i < states.length; i++) {
+            const state = states[i];
+            if (state && state.stateName === value) {
+              selectedState = state;
+              break;
+            }
+          }
+          
+          if (selectedState && selectedState.taxRatesA) {
+            const taxRateValue = parseFloat(selectedState.taxRatesA) / 100;
+            console.log("Setting tax rate to:", taxRateValue);
+            setTaxRate(taxRateValue);
           } else {
-            console.log("No matching state found or missing taxRatesA property");
+            console.log("No matching state found or missing taxRatesA");
             setTaxRate(0);
           }
         } catch (error) {
-          console.error("Error while finding state:", error);
+          console.error("Error in state selection:", error);
           setTaxRate(0);
         }
       } else {
-        console.error("States is not an array:", states);
+        console.error("States data is unavailable");
         setTaxRate(0);
       }
     }
@@ -99,12 +159,49 @@ function Checkout({ cart, setCart }) {
   const calculateSubtotal = () => {
     return cart.reduce((total, item) => {
       const prodVariants = variants[item.prodID] || [];
-      const selectedVariant = prodVariants.find(v => String(v.varID) === String(item.varID));
+      let selectedVariant = null;
+      
+      // Use manual loop instead of .find()
+      for (let i = 0; i < prodVariants.length; i++) {
+        if (String(prodVariants[i].varID) === String(item.varID)) {
+          selectedVariant = prodVariants[i];
+          break;
+        }
+      }
+      
       if (!selectedVariant) return total;
       const price = parseFloat(selectedVariant.varPrice);
       const quantity = item.quantity || 1;
       return isNaN(price) ? total : total + price * quantity;
     }, 0);
+  };
+
+  const getVariantPrice = (item) => {
+    const prodVariants = variants[item.prodID] || [];
+    let selectedVariant = null;
+    
+    for (let i = 0; i < prodVariants.length; i++) {
+      if (String(prodVariants[i].varID) === String(item.varID)) {
+        selectedVariant = prodVariants[i];
+        break;
+      }
+    }
+    
+    return selectedVariant ? parseFloat(selectedVariant.varPrice).toFixed(2) : 'N/A';
+  };
+
+  const getVariantSKU = (item) => {
+    const prodVariants = variants[item.prodID] || [];
+    let selectedVariant = null;
+    
+    for (let i = 0; i < prodVariants.length; i++) {
+      if (String(prodVariants[i].varID) === String(item.varID)) {
+        selectedVariant = prodVariants[i];
+        break;
+      }
+    }
+    
+    return selectedVariant ? selectedVariant.varSKU : 'N/A';
   };
 
   const placeOrder = async () => {
@@ -121,27 +218,35 @@ function Checkout({ cart, setCart }) {
     }
 
     const subtotal = calculateSubtotal();
-    const tax = subtotal * taxRate;  // Apply tax rate as decimal
+    const tax = subtotal * taxRate;
     const totalAmount = subtotal + tax + shippingCost;
 
+    // Convert monetary values to cents for the backend
     const orderData = {
-      items: cart.map(item => ({
-        prodID: item.prodID,
-        varID: item.varID,
-        quantity: item.quantity
-      })),
-      subtotal,
-      taxRate,
-      shippingCost,
-      totalAmount,
+      items: cart.map(item => {
+        const price = parseFloat(getVariantPrice(item));
+        return {
+          prodID: item.prodID,
+          varID: item.varID,
+          quantity: item.quantity || 1,
+          price: dollarsToCents(price) // Convert price to cents
+        };
+      }),
+      subtotal: dollarsToCents(subtotal),
+      taxRate: taxRate * 100, // Convert to percentage value (e.g., 6.25 instead of 0.0625)
+      shippingCost: dollarsToCents(shippingCost),
+      totalAmount: dollarsToCents(totalAmount),
       name,
       email,
       phone,
-      address
+      address,
+      state
     };
 
+    console.log("Sending order data to backend:", orderData);
+
     try {
-      const response = await fetch(`${API_URL}/api/checkout`, {
+      const response = await fetch(getApiUrl('/api/checkout'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData)
@@ -153,7 +258,7 @@ function Checkout({ cart, setCart }) {
         setCart([]);
         navigate("/");
       } else {
-        alert("Error placing order: " + data.error);
+        alert("Error placing order: " + (data.message || data.error || "Unknown error"));
       }
     } catch (error) {
       alert("Error placing order: " + error.message);
@@ -161,8 +266,17 @@ function Checkout({ cart, setCart }) {
   };
 
   const subtotal = calculateSubtotal();
-  const tax = subtotal * taxRate;  // Correct tax calculation using taxRate as a decimal
+  const tax = subtotal * taxRate;
   const grandTotal = subtotal + tax + shippingCost;
+
+  if (loading) {
+    return (
+      <div className="checkout-container">
+        <h2 className="checkout-title">Checkout</h2>
+        <p>Loading product information...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="checkout-container">
@@ -173,10 +287,19 @@ function Checkout({ cart, setCart }) {
           const productVariants = variants[item.prodID] || [];
           return (
             <div key={index} className="checkout-item">
-              <img src={item.prodURL} alt={item.prodTitle} className="checkout-item-image" />
+              <img 
+                src={item.prodURL} 
+                alt={item.prodTitle} 
+                className="checkout-item-image"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://via.placeholder.com/200?text=No+Image";
+                }}
+              />
               <div className="checkout-item-details">
                 <p className="checkout-item-title">{item.prodTitle}</p>
                 <p className="checkout-item-description">{item.prodDesc}</p>
+                
                 {productVariants.length > 0 ? (
                   <select
                     value={item.varID || ""}
@@ -186,12 +309,20 @@ function Checkout({ cart, setCart }) {
                     <option value="">Select a variant</option>
                     {productVariants.map(variant => (
                       <option key={variant.varID} value={variant.varID}>
-                        SKU: {variant.varSKU} | Price: ${variant.varPrice || "N/A"}
+                        SKU: {variant.varSKU} | Price: ${parseFloat(variant.varPrice).toFixed(2) || "N/A"}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <p>No variants available for this product.</p>
+                  <div className="no-variants-message">
+                    {loading ? "Loading variants..." : "No variants available for this product."}
+                  </div>
+                )}
+                
+                {item.varID && (
+                  <div className="selected-variant">
+                    <p>SKU: {getVariantSKU(item)} | Price: ${getVariantPrice(item)}</p>
+                  </div>
                 )}
               </div>
             </div>
