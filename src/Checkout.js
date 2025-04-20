@@ -160,8 +160,6 @@ function Checkout({ cart, setCart }) {
     return cart.reduce((total, item) => {
       const prodVariants = variants[item.prodID] || [];
       let selectedVariant = null;
-      
-      // Use manual loop instead of .find()
       for (let i = 0; i < prodVariants.length; i++) {
         if (String(prodVariants[i].varID) === String(item.varID)) {
           selectedVariant = prodVariants[i];
@@ -229,11 +227,11 @@ function Checkout({ cart, setCart }) {
           prodID: item.prodID,
           varID: item.varID,
           quantity: item.quantity || 1,
-          price: dollarsToCents(price) // Convert price to cents
+          price: dollarsToCents(price)
         };
       }),
       subtotal: dollarsToCents(subtotal),
-      taxRate: taxRate * 100, // Convert to percentage value (e.g., 6.25 instead of 0.0625)
+      taxRate: taxRate * 100, 
       shippingCost: dollarsToCents(shippingCost),
       totalAmount: dollarsToCents(totalAmount),
       name,
