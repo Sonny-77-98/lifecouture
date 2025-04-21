@@ -64,7 +64,6 @@ app.get('/api/states', async (req, res) => {
   }
 });
 
-// Checkout process
 app.post('/api/checkout', async (req, res) => {
   const { items, name, email, phone, address, state, taxRate, shippingCost, totalAmount } = req.body;
   let connection;
@@ -96,13 +95,29 @@ app.post('/api/checkout', async (req, res) => {
     const firstName = nameParts.shift() || '';
     const lastName = nameParts.join(' ') || '';
     
-    // Create user or get existing user
+    // First, create the user record
     const [userInsert] = await connection.query(
       'INSERT INTO User (usFname, usLname, usEmail, usPNum, usAdID, usPassword, usRole) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [firstName, lastName, email, phone, 1, 'default_placeholder', 'customer']
     );
     
     const userID = userInsert.insertId;
+    
+    // Then create the address record with the userID
+    const [addressInsert] = await connection.query(
+      'INSERT INTO UserAddresses (usAdType, usAdStr, usAdCity, usAdState, usAdPCode, usAdCountry, usAdIsDefault, usID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ['shipping', address, state.split(',')[0].trim(), state.split(',')[1]?.trim() || state, 
+       address.match(/\d{5}(-\d{4})?/) ? address.match(/\d{5}(-\d{4})?/)[0] : '00000', 
+       'USA', true, userID]
+    );
+    
+    const addressID = addressInsert.insertId;
+    
+    // Update the user record to point to the newly created address
+    await connection.query(
+      'UPDATE User SET usAdID = ? WHERE usID = ?',
+      [addressID, userID]
+    );
 
     // Create order
     const [orderResult] = await connection.query(
@@ -126,10 +141,16 @@ app.post('/api/checkout', async (req, res) => {
         'INSERT INTO OrderItems (orderID, varID, orderVarQty, prodUPrice) VALUES (?, ?, ?, ?)',
         [orderID, item.varID, quantity, price]
       );
+      
+      // Update inventory (optional)
+      await connection.query(
+        'UPDATE Inventory SET invQty = invQty - ? WHERE varID = ?',
+        [quantity, item.varID]
+      );
     }
 
     await connection.commit();
-    res.status(200).json({ message: 'Order placed successfully', orderID });
+    res.status(200).json({ message: 'Order placed successfully', orderID, userID, addressID });
   } catch (error) {
     console.error('Error during checkout:', error);
     if (connection) {
