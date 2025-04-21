@@ -43,6 +43,16 @@ const OrderDetail = () => {
           headers: { 'x-auth-token': token }
         });
         
+        // Log the response to help debug price issues
+        console.log('Order data received:', response.data);
+        
+        // For each order item, check if we need to fix the price
+        if (response.data && response.data.items && Array.isArray(response.data.items)) {
+          response.data.items.forEach(item => {
+            console.log(`Item ${item.orderItemID}: Original price = ${item.prodUPrice}`);
+          });
+        }
+        
         setOrder(response.data);
         setLoading(false);
       } catch (err) {
@@ -127,8 +137,11 @@ const OrderDetail = () => {
     if (price === undefined || price === null) {
       return '$0.00';
     }
+
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-    return `$${numPrice.toFixed(2)}`;
+    const dollars = numPrice < 1000 ? numPrice / 100 : numPrice;
+    
+    return `${dollars.toFixed(2)}`;
   };
   
   const formatDate = (dateString) => {
@@ -143,14 +156,17 @@ const OrderDetail = () => {
     }).format(date);
   };
   
-  // Format currency for display
   const formatCurrency = (amount) => {
     if (!amount && amount !== 0) return 'N/A';
+
+    const dollars = amount > 1000 ? amount / 100 : amount;
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount / 100); 
+    }).format(dollars);
   };
+
   
   if (loading) {
     return (
@@ -245,7 +261,7 @@ const OrderDetail = () => {
             </div>
             <div className="info-item">
               <span className="label">Shipping Cost:</span>
-              <span>{formatCurrency(order.shippingCost)}</span>
+              <span>${formatPrice(order.shippingCost)}</span>
             </div>
           </div>
         </div>
@@ -299,24 +315,36 @@ const OrderDetail = () => {
             </tr>
           </thead>
           <tbody>
-            {order.items && order.items.map((item) => (
-              <tr key={item.orderItemID}>
-                <td>
-                  <div className="product-info">
-                    <span className="product-name">{item.prodTitle}</span>
-                    {item.prodDesc && (
-                      <span className="product-description">{item.prodDesc}</span>
-                    )}
-                  </div>
-                </td>
-                <td>
-                  {item.varSKU || item.sku || 'N/A'}
-                </td>
-                <td>{formatCurrency(item.prodUPrice)}</td>
-                <td>{item.orderVarQty}</td>
-                <td>{formatCurrency(item.prodUPrice * item.orderVarQty)}</td>
-              </tr>
-            ))}
+            {order.items && order.items.map((item) => {
+              // Log item details to help with debugging
+              console.log('Item details:', {
+                id: item.orderItemID,
+                title: item.prodTitle, 
+                sku: item.varSKU || item.sku,
+                priceRaw: item.prodUPrice,
+                priceFormatted: formatCurrency(item.prodUPrice),
+                qty: item.orderVarQty
+              });
+              
+              return (
+                <tr key={item.orderItemID}>
+                  <td>
+                    <div className="product-info">
+                      <span className="product-name">{item.prodTitle}</span>
+                      {item.prodDesc && (
+                        <span className="product-description">{item.prodDesc}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    {item.varSKU || item.sku || 'N/A'}
+                  </td>
+                  <td>{formatCurrency(item.prodUPrice)}</td>
+                  <td>{item.orderVarQty}</td>
+                  <td>{formatCurrency(item.prodUPrice * item.orderVarQty)}</td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr>
@@ -333,7 +361,5 @@ const OrderDetail = () => {
     </div>
   );
 };
-
-
 
 export default OrderDetail;
