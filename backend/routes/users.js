@@ -165,36 +165,33 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/:userId/addresses', authMiddleware, async (req, res) => {
+  router.get('/:userId/addresses', async (req, res) => {
   try {
-    console.log(`Getting addresses for user ID: ${req.params.userId}`);
+    const { userId } = req.params;
+    console.log(`Getting addresses for user ID: ${userId}`);
 
-    const user = await query('SELECT usID FROM User WHERE usID = ?', [req.params.userId]);
-    
-    if (!user.length) {
-      console.log('User not found');
+    const userExists = await query('SELECT usID FROM User WHERE usID = ?', [userId]);
+    if (userExists.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    const addresses = await query('SELECT * FROM UserAddresses WHERE usID = ?', [userId]);
+    console.log(`Found ${addresses.length} addresses for user ${userId}`);
+ 
+    const userDefaultAddress = await query('SELECT usAdID FROM User WHERE usID = ?', [userId]);
     
-    const userWithDefaultAddr = await query('SELECT usAdID FROM User WHERE usID = ?', [req.params.userId]);
-    const defaultAddressId = userWithDefaultAddr[0].usAdID;
-    const addresses = await query(`
-      SELECT a.*, 
-             (a.usAdID = ?) as usAdIsDefault
-      FROM UserAddresses a 
-      WHERE a.usID = ?
-      ORDER BY usAdIsDefault DESC, usAdID ASC
-    `, [defaultAddressId, req.params.userId]);
-    
-    if (!addresses.length) {
-      console.log('No addresses found for user');
-      return res.json([]); 
+    if (addresses.length > 0 && userDefaultAddress[0] && userDefaultAddress[0].usAdID) {
+      addresses.forEach(addr => {
+        if (addr.usAdID === userDefaultAddress[0].usAdID) {
+          addr.usAdIsDefault = true;
+        }
+      });
     }
-    
-    res.json(addresses);
+
+    return res.json(addresses);
   } catch (error) {
     console.error('Error fetching user addresses:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

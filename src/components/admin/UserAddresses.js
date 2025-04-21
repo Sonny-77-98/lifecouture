@@ -4,7 +4,7 @@ import axios from 'axios';
 import '../../style/UserAddresses.css';
 
 const UserAddresses = () => {
-  const { id } = useParams();
+  const { userId } = useParams(); // Make sure we use the correct parameter name from your routes
   const navigate = useNavigate();
   
   const [addresses, setAddresses] = useState([]);
@@ -32,6 +32,16 @@ const UserAddresses = () => {
       try {
         setLoading(true);
         
+        // Validate that we have a userId before making any API calls
+        if (!userId) {
+          console.error('User ID is undefined or invalid:', userId);
+          setError('Invalid user ID. Please go back and try again.');
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Fetching data for user ID:', userId);
+        
         const token = getAuthToken();
         if (!token) {
           setError('Authentication required');
@@ -39,38 +49,49 @@ const UserAddresses = () => {
           return;
         }
 
-        const userResponse = await axios.get(`/api/users/${id}`, {
+        // First fetch user data
+        const userResponse = await axios.get(`/api/users/${userId}`, {
           headers: { 'x-auth-token': token }
         });
         setUser(userResponse.data);
 
-        const addressResponse = await axios.get(`/api/users/${id}/addresses`, {
+        // Then fetch addresses with proper error handling
+        console.log(`Fetching addresses for user ${userId}`);
+        const addressResponse = await axios.get(`/api/users/${userId}/addresses`, {
           headers: { 'x-auth-token': token }
         });
         
+        console.log('Address response:', addressResponse.data);
+        
         if (Array.isArray(addressResponse.data)) {
           setAddresses(addressResponse.data);
+        } else if (addressResponse.data) {
+          // If it's an object but not an array, wrap it
+          setAddresses([addressResponse.data]);
         } else {
-          setAddresses(addressResponse.data ? [addressResponse.data] : []);
+          // Empty or null response
+          setAddresses([]);
         }
         
         setLoading(false);
       } catch (err) {
         console.error('Error fetching user data:', err);
-        setError('Failed to load user addresses');
+        setError(`Failed to load user data: ${err.message || 'Unknown error'}`);
         setLoading(false);
+        // Still set empty addresses array to avoid undefined errors
+        setAddresses([]);
       }
     };
     
     fetchUserAndAddresses();
-  }, [id]);
+  }, [userId]);
   
+  // Rest of your component code...
+  
+  // Example functions for handling address operations
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewAddress(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setNewAddress(prev => ({ ...prev, [name]: value }));
   };
   
   const handleCheckboxChange = (e) => {
@@ -91,18 +112,21 @@ const UserAddresses = () => {
         return;
       }
       
-      const response = await axios.post(`/api/users/${id}/addresses`, newAddress, {
+      const response = await axios.post(`/api/users/${userId}/addresses`, newAddress, {
         headers: { 'x-auth-token': token }
       });
 
-      const addressResponse = await axios.get(`/api/users/${id}/addresses`, {
+      // Refresh the address list after adding a new one
+      const addressResponse = await axios.get(`/api/users/${userId}/addresses`, {
         headers: { 'x-auth-token': token }
       });
       
       if (Array.isArray(addressResponse.data)) {
         setAddresses(addressResponse.data);
+      } else if (addressResponse.data) {
+        setAddresses([addressResponse.data]);
       } else {
-        setAddresses(addressResponse.data ? [addressResponse.data] : []);
+        setAddresses([]);
       }
 
       setNewAddress({
@@ -130,7 +154,7 @@ const UserAddresses = () => {
         return;
       }
       
-      await axios.patch(`/api/users/${id}/addresses/${addressId}/default`, {}, {
+      await axios.patch(`/api/users/${userId}/addresses/${addressId}/default`, {}, {
         headers: { 'x-auth-token': token }
       });
 
@@ -154,7 +178,7 @@ const UserAddresses = () => {
           return;
         }
         
-        await axios.delete(`/api/users/${id}/addresses/${addressId}`, {
+        await axios.delete(`/api/users/${userId}/addresses/${addressId}`, {
           headers: { 'x-auth-token': token }
         });
         setAddresses(addresses.filter(addr => addr.usAdID !== addressId));
@@ -165,7 +189,7 @@ const UserAddresses = () => {
       }
     }
   };
-  
+
   if (loading) {
     return <div className="loading-indicator">Loading addresses...</div>;
   }
