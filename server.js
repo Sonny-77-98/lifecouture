@@ -213,17 +213,50 @@ app.get('*', (req, res) => {
 });
 
 // Server startup with IP address detection
-const networkInterfaces = os.networkInterfaces();
-
-let ipAddress;
-Object.keys(networkInterfaces).forEach(interfaceName => {
-  networkInterfaces[interfaceName].forEach(interface => {
-    if (!interface.internal && interface.family === 'IPv4') {
-      ipAddress = interface.address;
+function getIPAddresses() {
+  const interfaces = os.networkInterfaces();
+  const addresses = [];
+  
+  for (const interfaceName in interfaces) {
+    const interfaceInfo = interfaces[interfaceName];
+    for (const info of interfaceInfo) {
+      if (!info.internal && info.family === 'IPv4') {
+        addresses.push(info.address);
+      }
     }
-  });
-});
+  }
+  
+  return addresses;
+}
 
-app.listen(PORT, ipAddress || '127.0.0.1', () => {
-  console.log(`Server running at http://${ipAddress || '127.0.0.1'}:${PORT}`);
-});
+function startServer() {
+  const addresses = getIPAddresses();
+
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n=== Server Started Successfully ===`);
+    console.log(`Server is running on port: ${PORT}`);
+    
+    if (addresses.length > 0) {
+      console.log('\nServer accessible at:');
+      addresses.forEach(address => {
+        console.log(`http://${address}:${PORT}`);
+      });
+    } else {
+      console.log(`http://localhost:${PORT}`);
+    }
+    
+    console.log('\nPress Ctrl+C to stop the server');
+    console.log('=====================================\n');
+  });
+
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Try a different port.`);
+    } else {
+      console.error('Server error:', error);
+    }
+    process.exit(1);
+  });
+}
+
+startServer();
