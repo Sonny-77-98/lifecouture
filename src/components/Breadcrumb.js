@@ -11,24 +11,28 @@ const Breadcrumb = () => {
     breadcrumbs.push({ name: 'Home', path: '/' });
   }
 
-  pathnames.forEach((path, index) => {
-    let name = path.charAt(0).toUpperCase() + path.slice(1);
+  if (pathnames[0] === 'order-summary') {
+    breadcrumbs.push({ name: 'Order Summary', path: '/order-summary' });
+  } else {
+    pathnames.forEach((path, index) => {
+      let name = path.charAt(0).toUpperCase() + path.slice(1);
 
-    if (path === 'checkout') {
-      breadcrumbs.push({ name: 'Cart', path: '/cart' });
-      breadcrumbs.push({ name: 'Checkout', path: '/checkout' });
-    }
-    else if (path === 'FAQ') {
-      breadcrumbs.push({ name: 'About', path: '/about' });
-      breadcrumbs.push({ name: 'FAQ', path: '/FAQ' });
-    }
-    else if (path !== 'cart') {
-      breadcrumbs.push({
-        name,
-        path: `/${pathnames.slice(0, index + 1).join('/')}`,
-      });
-    }
-  });
+      if (path === 'checkout') {
+        breadcrumbs.push({ name: 'Cart', path: '/cart' });
+        breadcrumbs.push({ name: 'Checkout', path: '/checkout' });
+      }
+      else if (path === 'FAQ') {
+        breadcrumbs.push({ name: 'About', path: '/about' });
+        breadcrumbs.push({ name: 'FAQ', path: '/FAQ' });
+      }
+      else if (path !== 'cart') {
+        breadcrumbs.push({
+          name,
+          path: `/${pathnames.slice(0, index + 1).join('/')}`,
+        });
+      }
+    });
+  }
 
   return (
     <div className="breadcrumb-container">

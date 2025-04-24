@@ -325,3 +325,20 @@ table th {
   font-size: 18px;
   color: #666;
 }
+
+/* Fix: Overflow issue on tables and input fields */
+.order-items-table {
+  overflow-x: auto;
+  display: block;
+}
+
+.order-items-table th,
+.order-items-table td {
+  white-space: nowrap;
+}
+
+.add-item-button,
+.remove-button {
+  width: auto;
+  min-width: 120px;
+}

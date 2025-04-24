@@ -25,6 +25,7 @@
 .header-actions {
   display: flex;
   gap: 10px;
+  z-index: 10;
 }
 
 .edit-order-button,
@@ -35,6 +36,7 @@
   cursor: pointer;
   text-decoration: none;
   text-align: center;
+  z-index: 20;
 }
 
 .edit-order-button {
@@ -49,7 +51,6 @@
   border: none;
 }
 
-/* Order summary section */
 .order-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -141,7 +142,6 @@
   margin: 5px 0;
 }
 
-/* Order items section */
 .order-items-section {
   background-color: white;
   border-radius: 8px;
@@ -215,7 +215,6 @@
   color: #0d6efd;
 }
 
-/* Navigation */
 .back-to-orders {
   margin-top: 20px;
 }
@@ -232,7 +231,6 @@
   text-decoration: underline;
 }
 
-/* Messages */
 .error-message,
 .auth-error-message {
   background-color: #f8d7da;
@@ -268,6 +266,7 @@
   
   .header-actions {
     flex-direction: column;
+    gap: 15px; /* Ensure space for buttons */
   }
   
   .info-item {
