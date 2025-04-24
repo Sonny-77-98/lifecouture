@@ -219,7 +219,6 @@ function Checkout({ cart, setCart }) {
     const tax = subtotal * taxRate;
     const totalAmount = subtotal + tax + shippingCost;
 
-    // Convert monetary values to cents for the backend
     const orderData = {
       items: cart.map(item => {
         const price = parseFloat(getVariantPrice(item));
@@ -254,7 +253,7 @@ function Checkout({ cart, setCart }) {
       if (response.ok) {
         alert("Order placed successfully!");
         setCart([]);
-        navigate("/");
+        navigate(`/order-summary/${data.orderID}`);
       } else {
         alert("Error placing order: " + (data.message || data.error || "Unknown error"));
       }

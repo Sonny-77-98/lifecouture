@@ -1,4 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
+
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -27,8 +29,11 @@ import Cart from './Cart';
 import Checkout from './Checkout';
 import About from './About';
 
-//Breadcrumb component
+// Breadcrumb component
 import Breadcrumb from './components/Breadcrumb';
+
+// Order Summary component (as per the latest change)
+import OrderSummary from './components/OrderSummary';
 
 // Styles
 import './style/App.css';
@@ -81,6 +86,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        {/* Only render navbar for non-admin routes */}
         {!isAdminRoute && (
           <div className="navbar">
             <div className="logo">Life Couture</div>
@@ -88,7 +94,6 @@ function App() {
               <Link to="/">Home</Link>
               <Link to="/Cart">Cart ({cart.length})</Link>
               <Link to="/About">About</Link>
-              <Link to="/Admin">Admin</Link>
             </div>
           </div>
         )}
@@ -97,7 +102,7 @@ function App() {
           {!isAdminRoute && <Breadcrumb />}
 
           <Routes>
-            {/* Keep routes using capital letters to maintain consistency */}
+            {/* Admin routes */}
             <Route path="/Login" element={<Login />} />
             <Route path="/Admin" element={<Navigate to="/Admin/Dashboard" />} />
             <Route path="/Admin/Dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
@@ -108,24 +113,18 @@ function App() {
             <Route path="/Admin/Categories/Add" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
             <Route path="/Admin/Categories/Edit/:id" element={<PrivateRoute><CategoryForm /></PrivateRoute>} />
             <Route path="/Admin/Inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
-            
-            {/* Add missing Order routes */}
             <Route path="/Admin/Orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
             <Route path="/Admin/Orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
             <Route path="/Admin/Orders/Edit/:id" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
             <Route path="/Admin/Orders/Create" element={<PrivateRoute><OrderForm /></PrivateRoute>} />
-            
-            {/* Add missing Variant routes */}
             <Route path="/Admin/Variants" element={<PrivateRoute><VariantList /></PrivateRoute>} />
             <Route path="/Admin/Variants/Add" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
             <Route path="/Admin/Variants/Edit/:id" element={<PrivateRoute><VariantForm /></PrivateRoute>} />
-            
-            {/* Add missing User routes */}
             <Route path="/Admin/Users" element={<PrivateRoute><UserList /></PrivateRoute>} />
             <Route path="/Admin/Users/Create" element={<PrivateRoute><UserForm /></PrivateRoute>} />
             <Route path="/Admin/Users/Edit/:id" element={<PrivateRoute><UserForm /></PrivateRoute>} />
             <Route path="/Admin/Users/:userId/Addresses" element={<PrivateRoute><UserAddresses /></PrivateRoute>} />
-            
+
             {/* Storefront routes */}
             <Route path="/" element={
               <Home
@@ -142,6 +141,9 @@ function App() {
             <Route path="/About" element={<About />} />
             <Route path="/ProductFilter" element={<ProductFilter addToCart={addToCart} />} />
             <Route path="/FAQ" element={<FAQ />} />
+            
+            {/* Order Summary route */}
+            <Route path="/Order-summary/:orderID" element={<OrderSummary />} />
           </Routes>
         </div>
 
@@ -151,17 +153,23 @@ function App() {
   );
 }
 
-const Footer = () => (
-  <div className="footer">
-    <p>&copy; 2025 Life Couture. All rights reserved.</p>
-    <div className="contact-info">
-      <p>If you have any questions, feel free to reach out!</p>
-      <p>Email: <a href="mailto:support@lifecouture.com">support@lifecouture.com</a></p>
-      <p>Phone: (123) 456-7890</p>
-      <p>Address: 123 Fitness Lane, Workout City, WC 56789</p>
+const Footer = () => {
+  const isAdminRoute = window.location.pathname.startsWith('/Admin') || window.location.pathname === '/Login';
+
+  return (
+    <div className="footer">
+      <p>&copy; 2025 Life Couture. All rights reserved.</p>
+      {!isAdminRoute && (
+        <div className="contact-info">
+          <p>If you have any questions, feel free to reach out!</p>
+          <p>Email: <a href="mailto:support@lifecouture.com">support@lifecouture.com</a></p>
+          <p>Phone: (123) 456-7890</p>
+          <p>Address: 123 Fitness Lane, Workout City, WC 56789</p>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const Home = ({ productList, loading, error, addToCart, setSearchQuery, searchQuery }) => (
   <div>
