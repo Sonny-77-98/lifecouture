@@ -725,23 +725,36 @@ const ProductForm = () => {
           <div className="image-grid">
             {productImages.map((image, index) => (
               <div key={image.imgID || image.tempId} className="image-item">
-                <div className="image-preview">
-                  <img 
-                    src={image.imgURL} 
-                    alt={image.imgAlt || "Product image"} 
+                <div className="image-preview" style={{ 
+                  maxHeight: '250px',
+                  maxWidth: '250px',
+                  height: '250px',
+                  width: '250px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <img
+                    src={image.imgURL}
+                    alt={image.imgAlt || "Product image"}
                     onError={(e) => {e.target.src = "https://i.imgur.com/O4L5Wbf.jpeg"}}
+                    style={{
+                      maxHeight: '100%',
+                      maxWidth: '100%',
+                      objectFit: 'contain'
+                    }}
                   />
                 </div>
                 <div className="image-details">
                   <p className="image-alt">{image.imgAlt || "No alt text"}</p>
                   <p className="image-variant">
                     Variant: {
-                      variants.find(v => v.varID === image.varID)?.varSKU || 
+                      variants.find(v => v.varID === image.varID)?.varSKU ||
                       "Not assigned to variant"
                     }
                   </p>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="remove-image-btn"
                     onClick={() => removeImage(index)}
                   >

@@ -53,9 +53,7 @@ app.get('/api/test', async (req, res) => {
 app.get('/api/states', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT stateID, stateName, taxRatesA FROM States');
-    
     console.log('Raw state data from DB:', rows);
-
     res.setHeader('Content-Type', 'application/json');
     res.send(JSON.stringify(rows));
   } catch (error) {
@@ -64,6 +62,51 @@ app.get('/api/states', async (req, res) => {
   }
 });
 
+// Fetch order details after placing the order
+app.get('/api/order/:orderID', async (req, res) => {
+  const { orderID } = req.params;
+
+  try {
+    // Query for order details
+    const [order] = await pool.query(
+      'SELECT o.orderID, o.orderTotalAmt, o.taxRate, o.shippingCost, o.orderCreatedAt, o.orderStat, oi.prodUPrice, oi.orderVarQty, p.prodName, pv.varName ' +
+      'FROM Orders o ' +
+      'JOIN OrderItems oi ON o.orderID = oi.orderID ' +
+      'JOIN Products p ON oi.prodID = p.prodID ' +
+      'JOIN ProductVariants pv ON oi.varID = pv.varID ' +
+      'WHERE o.orderID = ?',
+      [orderID]
+    );
+
+    if (order.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Format order details
+    const orderSummary = {
+      orderID: order[0].orderID,
+      totalAmount: order[0].orderTotalAmt,
+      taxRate: order[0].taxRate,
+      shippingCost: order[0].shippingCost,
+      orderStatus: order[0].orderStat,
+      orderDate: order[0].orderCreatedAt,
+      items: order.map(item => ({
+        productName: item.prodName,
+        variantName: item.varName,
+        price: item.prodUPrice,
+        quantity: item.orderVarQty,
+        totalPrice: item.prodUPrice * item.orderVarQty,
+      }))
+    };
+
+    res.json(orderSummary);
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    res.status(500).json({ error: 'Failed to fetch order details', details: error.message });
+  }
+});
+
+// Checkout route (place order)
 app.post('/api/checkout', async (req, res) => {
   const { items, name, email, phone, address, state, taxRate, shippingCost, totalAmount } = req.body;
   let connection;
@@ -213,17 +256,50 @@ app.get('*', (req, res) => {
 });
 
 // Server startup with IP address detection
-const networkInterfaces = os.networkInterfaces();
-
-let ipAddress;
-Object.keys(networkInterfaces).forEach(interfaceName => {
-  networkInterfaces[interfaceName].forEach(interface => {
-    if (!interface.internal && interface.family === 'IPv4') {
-      ipAddress = interface.address;
+function getIPAddresses() {
+  const interfaces = os.networkInterfaces();
+  const addresses = [];
+  
+  for (const interfaceName in interfaces) {
+    const interfaceInfo = interfaces[interfaceName];
+    for (const info of interfaceInfo) {
+      if (!info.internal && info.family === 'IPv4') {
+        addresses.push(info.address);
+      }
     }
-  });
-});
+  }
+  
+  return addresses;
+}
 
-app.listen(PORT, ipAddress || '127.0.0.1', () => {
-  console.log(`Server running at http://${ipAddress || '127.0.0.1'}:${PORT}`);
-});
+function startServer() {
+  const addresses = getIPAddresses();
+
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n=== Server Started Successfully ===`);
+    console.log(`Server is running on port: ${PORT}`);
+    
+    if (addresses.length > 0) {
+      console.log('\nServer accessible at:');
+      addresses.forEach(address => {
+        console.log(`http://${address}:${PORT}`);
+      });
+    } else {
+      console.log(`http://localhost:${PORT}`);
+    }
+    
+    console.log('\nPress Ctrl+C to stop the server');
+    console.log('=====================================\n');
+  });
+
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Try a different port.`);
+    } else {
+      console.error('Server error:', error);
+    }
+    process.exit(1);
+  });
+}
+
+startServer();

@@ -32,7 +32,7 @@ const Dashboard = () => {
         setStats({
           totalProducts: productsRes.data.length || 0,
           totalCategories: categoriesRes.data.length || 0,
-          totalOrders: orderCount.data.length || 0,
+          totalOrders: orderCount.data.orders ? orderCount.data.orders.length : 0,
           lowStockCount: lowStockRes.data.length || 0
         });
         
@@ -143,9 +143,6 @@ const Dashboard = () => {
               <div className="dashboard-menu">
                 <h3>Store Settings</h3>
                 <ul>
-                  <li>
-                    <Link to="/admin/profile">Account Settings</Link>
-                  </li>
                   <li>
                     <a href="/" target="_blank" rel="noopener noreferrer">View Store Front</a>
                   </li>
