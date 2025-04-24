@@ -125,8 +125,9 @@ const OrderForm = () => {
             variant: item.varID.toString(),
             variantSKU: item.sku || item.varSKU,
             quantity: parseInt(item.orderVarQty) || 1,
-            price: parseFloat(item.prodUPrice) / 100 || 0, // Convert from cents if stored that way
-            total: (parseFloat(item.prodUPrice) / 100 || 0) * (parseInt(item.orderVarQty) || 1),
+            price: parseFloat(item.prodUPrice) > 100 ? parseFloat(item.prodUPrice) / 100 : parseFloat(item.prodUPrice) || 0,
+            total: (parseFloat(item.prodUPrice) > 100 ? parseFloat(item.prodUPrice) / 100 : parseFloat(item.prodUPrice) || 0) 
+            * (parseInt(item.orderVarQty) || 1),
             productTitle: item.prodTitle
           }))
         });
