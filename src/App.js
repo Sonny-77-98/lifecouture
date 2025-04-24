@@ -1,5 +1,3 @@
-// src/App.js
-
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -74,7 +72,6 @@ function App() {
     setCart((prevCart) => [...prevCart, product]);
   };
 
-  // Keep this using capital 'A' to match existing URL detection
   const isAdminRoute = window.location.pathname.startsWith('/Admin') || window.location.pathname === '/Login';
 
   const filteredProducts = productList.filter((product) =>
