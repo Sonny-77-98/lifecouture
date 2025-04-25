@@ -193,7 +193,7 @@ const OrderForm = () => {
     setFormData({
       ...formData,
       customer: e.target.value,
-      shippingAddressId: '' // Reset shipping address when customer changes
+      shippingAddressId: ''
     });
   };
   
