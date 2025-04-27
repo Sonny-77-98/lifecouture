@@ -50,7 +50,7 @@ function App() {
       try {
         setLoading(true);
         
-        const response = await fetch('/api/products');
+        const response = await fetch('/api/products?status=active');
   
         if (!response.ok) {
           throw new Error(`Failed to fetch products: ${response.status}`);

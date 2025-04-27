@@ -437,19 +437,26 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.patch('/:id/status', authMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
-    const productId = req.params.id;
+    
+    if (!status || !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
 
-    const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
+    const product = await query('SELECT * FROM Product WHERE prodID = ?', [req.params.id]);
     
     if (product.length === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
+    
     await query(
       'UPDATE Product SET prodStat = ? WHERE prodID = ?',
-      [status, productId]
+      [status, req.params.id]
     );
     
-    res.json({ message: 'Product status updated successfully' });
+    res.json({ 
+      message: 'Product status updated successfully',
+      status: status 
+    });
   } catch (error) {
     console.error('Error updating product status:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -460,7 +467,6 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   let connection;
   try {
     const productId = req.params.id;
-
     const product = await query('SELECT * FROM Product WHERE prodID = ?', [productId]);
     
     if (product.length === 0) {
@@ -468,57 +474,25 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 
     connection = await require('../config/db').pool.getConnection();
-    await connection.beginTransaction();
-
-    const [variants] = await connection.execute(
-      'SELECT varID FROM ProductVariants WHERE prodID = ?', 
-      [productId]
-    );
-
-    if (variants && variants.length > 0) {
-      for (const variant of variants) {
-        await connection.execute(
-          'DELETE FROM VariantAttributesValues WHERE varID = ?',
-          [variant.varID]
-        );
-        
-        await connection.execute(
-          'DELETE FROM Inventory WHERE varID = ?',
-          [variant.varID]
-        );
+    
+    try {
+      await connection.execute('CALL PurgeProduct(?)', [productId]);
+      res.json({ message: 'Product deleted successfully' });
+    } catch (error) {
+      if (error.message && error.message.includes('Cannot delete product with existing orders')) {
+        return res.status(400).json({ 
+          message: 'Cannot delete product with existing orders. Consider marking it as inactive instead.'
+        });
       }
-      
-      await connection.execute(
-        'DELETE FROM ProductVariants WHERE prodID = ?',
-        [productId]
-      );
+      throw error;
     }
     
-    await connection.execute(
-      'DELETE FROM ProductCategories WHERE prodID = ?', 
-      [productId]
-    );
-    
-    await connection.execute(
-      'DELETE FROM ProductImages WHERE prodID = ?', 
-      [productId]
-    );
-    
-    await connection.execute(
-      'DELETE FROM Product WHERE prodID = ?', 
-      [productId]
-    );
-    
-    await connection.commit();
-    
-    res.json({ message: 'Product deleted successfully' });
   } catch (error) {
-    if (connection) {
-      await connection.rollback();
-    }
-    
     console.error('Error deleting product:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ 
+      message: 'Server error while deleting product', 
+      error: error.message 
+    });
   } finally {
     if (connection) {
       connection.release();

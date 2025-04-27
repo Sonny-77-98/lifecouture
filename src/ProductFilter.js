@@ -28,10 +28,10 @@ function ProductFilter({ addToCart }) {
       let productsRes;
       if (categoryId) {
         // Fetch products filtered by selected category
-        productsRes = await fetch(`/api/products?category=${categoryId}`);
+        productsRes = await fetch(`/api/products?category=${categoryId}&status=active`);
       } else {
         // Fetch all products
-        productsRes = await fetch(`/api/products`);
+        productsRes = await fetch(`/api/products?status=active`);
       }
 
       const productsData = await productsRes.json();
