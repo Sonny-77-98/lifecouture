@@ -16,6 +16,30 @@ const ProductList = () => {
     'active',
     'inactive',
   ], []);
+
+  const handleMarkInactive = async (id) => {
+    try {
+      await axios.patch(`/api/products/${id}/status`, { status: 'inactive' });
+      setProducts(prevProducts => prevProducts.map(product => 
+        product.prodID === id ? {...product, prodStat: 'inactive'} : product
+      ));
+    } catch (err) {
+      console.error('Error marking product as inactive:', err);
+      setError('Failed to mark product as inactive. Please try again.');
+    }
+  };
+  
+  const handleMarkActive = async (id) => {
+    try {
+      await axios.patch(`/api/products/${id}/status`, { status: 'active' });
+      setProducts(prevProducts => prevProducts.map(product => 
+        product.prodID === id ? {...product, prodStat: 'active'} : product
+      ));
+    } catch (err) {
+      console.error('Error marking product as active:', err);
+      setError('Failed to mark product as active. Please try again.');
+    }
+  };
   
   const fetchData = useCallback(async () => {
     try {
@@ -70,13 +94,21 @@ const ProductList = () => {
   }, [fetchData]);
   
   const handleDelete = useCallback(async (id) => {
-    if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+    if (window.confirm(
+      'Are you sure you want to delete this product? This action cannot be undone.\n\n' +
+      'Note: Products that have been ordered cannot be deleted and should be marked as inactive instead.'
+    )) {
       try {
         await axios.delete(`/api/products/${id}`);
         setProducts(prevProducts => prevProducts.filter(product => product.prodID !== id));
       } catch (err) {
         console.error('Error deleting product:', err);
-        setError('Failed to delete product. Please try again.');
+        
+        if (err.response?.status === 400 && err.response.data?.message) {
+          alert(err.response.data.message);
+        } else {
+          setError('Failed to delete product. Please try again.');
+        }
       }
     }
   }, []);
@@ -188,7 +220,7 @@ const ProductList = () => {
       </div>
       
       <div className="note-message">
-        <p>Note: To change a product's status, please use the Edit button to update the full product details.</p>
+      <p>Note: You can change a product's status directly using the dropdown in the Status column.</p>
       </div>
       
       {filteredProducts.length === 0 ? (
@@ -228,7 +260,24 @@ const ProductList = () => {
                       : product.prodDesc}
                   </td>
                   <td className="status-cell">
-                    {renderStatus(product.prodStat)}
+                    <select
+                      value={product.prodStat || 'active'}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        if (newStatus === 'active') {
+                          handleMarkActive(product.prodID);
+                        } else if (newStatus === 'inactive') {
+                          handleMarkInactive(product.prodID);
+                        }
+                      }}
+                      className={`status-select status-${product.prodStat || 'active'}`}
+                    >
+                      {statusOptions.map(status => (
+                        <option key={status} value={status}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="actions-cell">
                     <Link 
