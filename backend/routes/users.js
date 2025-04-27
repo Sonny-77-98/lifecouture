@@ -322,20 +322,23 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     connection = await require('../config/db').pool.getConnection();
     await connection.beginTransaction();
     
-    //set user's usAdID to NULL to remove the reference to UserAddresses
-    await connection.execute('UPDATE User SET usAdID = NULL WHERE usID = ?', [userId]);
-
-    await connection.execute('DELETE FROM ShoppingCart WHERE userID = ?', [userId]);
-
-    await connection.execute('DELETE FROM UserAddresses WHERE usID = ?', [userId]);
+    // Temporarily disable foreign key constraints
+    await connection.execute('SET FOREIGN_KEY_CHECKS=0');
 
     await connection.execute('DELETE FROM User WHERE usID = ?', [userId]);
+    await connection.execute('DELETE FROM UserAddresses WHERE usID = ?', [userId]);
+    await connection.execute('DELETE FROM ShoppingCart WHERE userID = ?', [userId]);
+
+    await connection.execute('SET FOREIGN_KEY_CHECKS=1');
     
     await connection.commit();
     res.json({ message: 'User deleted successfully' });
     
   } catch (error) {
-    if (connection) await connection.rollback();
+    if (connection) {
+      await connection.execute('SET FOREIGN_KEY_CHECKS=1');
+      await connection.rollback();
+    }
     console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   } finally {
