@@ -241,41 +241,6 @@ router.post('/:id/addresses', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/:userId/addresses/:addressId', authMiddleware, async (req, res) => {
-  try {
-    const { userId, addressId } = req.params;
-
-    const addressCheck = await query(
-      'SELECT usAdID FROM UserAddresses WHERE usAdID = ? AND usID = ?', 
-      [addressId, userId]
-    );
-    
-    if (addressCheck.length === 0) {
-      return res.status(404).json({ message: 'Address not found or does not belong to this user' });
-    }
-    const userCheck = await query('SELECT usAdID FROM User WHERE usID = ?', [userId]);
-    
-    if (userCheck[0].usAdID == addressId) {
-      const otherAddresses = await query(
-        'SELECT usAdID FROM UserAddresses WHERE usID = ? AND usAdID != ? LIMIT 1',
-        [userId, addressId]
-      );
-      
-      if (otherAddresses.length > 0) {
-        await query('UPDATE User SET usAdID = ? WHERE usID = ?', [otherAddresses[0].usAdID, userId]);
-      } else {
-        await query('UPDATE User SET usAdID = NULL WHERE usID = ?', [userId]);
-      }
-    }
-    
-    await query('DELETE FROM UserAddresses WHERE usAdID = ?', [addressId]);
-    
-    res.json({ message: 'Address deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting address:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 router.patch('/:userId/addresses/:addressId/default', authMiddleware, async (req, res) => {
   try {
@@ -333,6 +298,48 @@ router.delete('/:userId/addresses/:addressId', authMiddleware, async (req, res) 
   } catch (error) {
     console.error('Error deleting address:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/:id', authMiddleware, async (req, res) => {
+  let connection;
+  try {
+    const userId = req.params.id;
+
+    const userExists = await query('SELECT usID FROM User WHERE usID = ?', [userId]);
+    if (userExists.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const ordersCheck = await query('SELECT COUNT(*) as count FROM Orders WHERE userID = ?', [userId]);
+    if (ordersCheck[0].count > 0) {
+      return res.status(400).json({ 
+        message: 'Cannot delete user with existing orders',
+        hasOrders: true
+      });
+    }
+
+    connection = await require('../config/db').pool.getConnection();
+    await connection.beginTransaction();
+    
+    //set user's usAdID to NULL to remove the reference to UserAddresses
+    await connection.execute('UPDATE User SET usAdID = NULL WHERE usID = ?', [userId]);
+
+    await connection.execute('DELETE FROM ShoppingCart WHERE userID = ?', [userId]);
+
+    await connection.execute('DELETE FROM UserAddresses WHERE usID = ?', [userId]);
+
+    await connection.execute('DELETE FROM User WHERE usID = ?', [userId]);
+    
+    await connection.commit();
+    res.json({ message: 'User deleted successfully' });
+    
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  } finally {
+    if (connection) connection.release();
   }
 });
 module.exports = router;
