@@ -192,15 +192,15 @@
 }
 
 .actions-cell {
-  white-space: nowrap; /* Prevent wrapping of buttons */
-  width: auto; /* Ensure cell adapts based on content */
-  display: flex; /* Flexbox layout to avoid overlap */
-  gap: 12px; /* Adequate spacing between buttons */
+  white-space: nowrap;
+  width: auto;
+  display: flex;
+  gap: 12px;
 }
 
 .view-button,
 .edit-button {
-  padding: 8px 12px; /* Ensure the buttons are bigger */
+  padding: 8px 12px;
   border-radius: 4px;
   font-size: 13px;
   cursor: pointer;
@@ -320,7 +320,7 @@
 
   .actions-cell {
     flex-direction: column;
-    gap: 5px; /* Space between buttons on smaller screens */
+    gap: 5px;
   }
 
   .view-button,

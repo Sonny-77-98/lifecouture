@@ -165,6 +165,7 @@ const Footer = () => {
           <p>Email: <a href="mailto:support@lifecouture.com">support@lifecouture.com</a></p>
           <p>Phone: (123) 456-7890</p>
           <p>Address: 123 Fitness Lane, Workout City, WC 56789</p>
+          <p><Link to="/FAQ" className="footer-link">Frequently Asked Questions</Link></p>
         </div>
       )}
     </div>
