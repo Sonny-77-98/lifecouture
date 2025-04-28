@@ -32,9 +32,6 @@ function About() {
         <p>
           <strong>All for your casual yet stylish needs!</strong>
         </p>
-        <Link to="/FAQ" style={{ color: '#ffd700', textDecoration: 'underline', display: 'block', marginTop: '20px' }}>
-        Visit Our FAQ Page
-        </Link>
       </div>
     </div>
   );

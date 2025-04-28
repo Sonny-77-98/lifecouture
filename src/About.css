@@ -43,3 +43,39 @@ body {
 .about-content strong {
   font-weight: bold;
 }
+
+@media (max-width: 768px) {
+  .about-header {
+    font-size: 50px;
+    margin-bottom: 30px;
+  }
+
+  .about-content {
+    width: 90%;
+    padding: 40px;
+  }
+
+  .about-content p {
+    font-size: 18px;
+  }
+
+  .about-container {
+    padding: 40px 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .about-header {
+    font-size: 40px;
+    margin-bottom: 20px;
+  }
+
+  .about-content {
+    width: 95%;
+    padding: 20px;
+  }
+
+  .about-content p {
+    font-size: 16px;
+  }
+}

@@ -21,10 +21,6 @@ const Breadcrumb = () => {
         breadcrumbs.push({ name: 'Cart', path: '/cart' });
         breadcrumbs.push({ name: 'Checkout', path: '/checkout' });
       }
-      else if (path === 'FAQ') {
-        breadcrumbs.push({ name: 'About', path: '/about' });
-        breadcrumbs.push({ name: 'FAQ', path: '/FAQ' });
-      }
       else if (path !== 'cart') {
         breadcrumbs.push({
           name,
